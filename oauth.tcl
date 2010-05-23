@@ -1,4 +1,7 @@
 #
+# 0.2 - ???
+#  - create base_url correctly for signing (remove ?params=...)
+#
 # 0.1 - May 18 2010
 #  - Initial release
 # 
@@ -123,7 +126,7 @@ proc oauth::query_call {url method params {sign_params {}} {token_secret {}}} {
 # do http request with oauth header
 proc oauth::query {url method oauth_header {query {}}} {
 	set header [list Authorization [concat "OAuth" $oauth_header]]
-	set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout -binary 1]
+	set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout]
 	set data [http::data $token]
 	set ncode [http::ncode $token]
 	http::cleanup $token
@@ -158,6 +161,8 @@ proc oauth::params_signature {params} {
 # build signature as in section 9 of oauth spec
 # token_secret may be empty
 proc oauth::signature {url method params {token_secret {}}} {
+	# We want base URL for signing (remove ?params=...)
+	set url [lindex [split $url "?"] 0]
 	set base_string [oauth::uri_escape ${method}]&[oauth::uri_escape ${url}]&[oauth::uri_escape [oauth::params_signature $params]]
 	set key [oauth::uri_escape $oauth::consumer_secret]&[oauth::uri_escape $token_secret]
 	set signature [sha1::hmac -bin -key $key $base_string]

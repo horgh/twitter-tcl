@@ -1,6 +1,12 @@
 #
 # Created by fedex and horgh. (www.summercat.com)
 #
+# 0.3 - ???
+#  - fix direct msg
+#  - replace decode_html with htmlparse::mapEscapes (though this isn't even
+#    really needed i think!)
+#  - add search users (!twit_searchusers)
+#
 # 0.2 - May 18 2010
 #  - add timeout to query to avoid hangs
 #  - update decode_html for more accurate utf translation
@@ -59,6 +65,7 @@
 #  - !followers
 #  - !following
 #  - !retweet
+#  - !twit_searchusers
 # oauth commands
 #  - !twit_request_token
 #  - !twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>
@@ -71,6 +78,7 @@ package require http
 package require oauth
 # tcllib packages
 package require json
+package require htmlparse
 
 namespace eval twitter {
 	variable channel "#OUTPUT_CHANNEL"
@@ -102,7 +110,7 @@ namespace eval twitter {
 
 	variable status_url "http://twitter.com/statuses/update.json"
 	variable home_url "http://api.twitter.com/1/statuses/home_timeline.json"
-	variable msg_url "http://twitter.com/direct_messages/new.xml"
+	variable msg_url "http://twitter.com/direct_messages/new.json"
 	variable msgs_url "http://twitter.com/direct_messages.json"
 	variable trends_curr_url "http://search.twitter.com/trends/current.json"
 	variable follow_url "http://twitter.com/friendships/create.json"
@@ -111,6 +119,7 @@ namespace eval twitter {
 	variable followers_url "http://twitter.com/statuses/followers.json"
 	variable following_url "http://twitter.com/statuses/friends.json"
 	variable retweet_url "http://api.twitter.com/1/statuses/retweet/"
+	variable search_users_url http://api.twitter.com/1/users/search.json
 
 	bind pub	-|- "!twit" twitter::tweet
 	bind pub	-|- "!tweet" twitter::tweet
@@ -121,6 +130,7 @@ namespace eval twitter {
 	bind pub	-|- "!twit_updates" twitter::updates
 	bind pub	-|- "!twit_msgs" twitter::msgs
 	bind pub	-|- "!twit_search" twitter::search
+	bind pub	-|- "!twit_searchusers" twitter::search_users
 	bind pub	-|- "!followers" twitter::followers
 	bind pub	-|- "!following" twitter::following
 	bind pub	-|- "!retweet" twitter::retweet
@@ -181,7 +191,7 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 
 # Output decoded/split string to given channel
 proc twitter::output {chan str} {
-	set str [twitter::decode_html $str]
+	set str [htmlparse::mapEscapes $str]
 #	foreach line [twitter::split_line 400 $str] {
 #		$twitter::output_cmd "PRIVMSG $chan :$line"
 #	}
@@ -294,7 +304,7 @@ proc twitter::search {nick uhost hand chan argv} {
 	}
 
 	if {[catch {twitter::query $twitter::search_url [list q $argv]} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Search error ($argv)"
+		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)"
 		return
 	}
 
@@ -310,6 +320,29 @@ proc twitter::search {nick uhost hand chan argv} {
 		if {$count > 4} {
 			break
 		}
+	}
+}
+
+# Get first 5 results from users search
+proc twitter::search_users {nick uhost hand chan argv} {
+	if {![channel get $chan twitter]} { return }
+
+	if {[string length $argv] < 1} {
+		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_searchusers <string>"
+		return
+	}
+
+	set query [list q $argv per_page 5]
+	# we need params in url as so: param=param%20text&param2=text2
+	set url ${twitter::search_users_url}?q=[http::formatQuery $argv]&per_page=5
+
+	if {[catch {twitter::query $url $query GET} data]} {
+		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)."
+		return
+	}
+
+	foreach result $data {
+		twitter::output $chan "#[incr count] \002[dict get $result screen_name]\002 Name: [dict get $result name] Location: [dict get $result location] Description: [dict get $result description]"
 	}
 }
 
@@ -407,16 +440,19 @@ proc twitter::msgs {nick uhost hand chan argv} {
 # Send direct message to a user
 proc twitter::msg {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
+	set argv [split $argv]
 
-	if {[llength [split $argv]] < 2 || [string length [join [lrange [split $argv] 1 end]]] > 140} {
+	if {[llength $argv] < 2 || [string length [join [lrange $argv 1 end]]] > 140} {
 		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_msg <username> <msg 140 chars or less>"
 		return
 	}
 
-	set l [list screen_name [lindex [split $argv] 0] text [lrange [split $argv] 1 end]]
+	set name [lindex $argv 0]
+	set msg [lrange $argv 1 end]
+	set l [list screen_name $name text $msg]
 
 	if {[catch {twitter::query $twitter::msg_url $l} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Message to \002$argv\002 failed! (Are they following you?)"
+		$twitter::output_cmd "PRIVMSG $chan :Message to \002$name\002 failed ($data)! (Are they following you?)"
 	} else {
 		twitter::output $chan "Message sent."
 	}
@@ -538,43 +574,6 @@ proc twitter::split_line {max str} {
 	}
 
 	return $lines
-}
-
-# From perpleXa's urbandictionary script
-# Replaces html special chars with their hex equivalent
-proc twitter::decode_html {content} {
-	if {![string match *&* $content]} {
-		return $content;
-	}
-	set escapes {
-		&nbsp; \x20 &quot; \x22 &amp; \x26 &apos; \x27 &ndash; \x2D
-		&lt; \x3C &gt; \x3E &tilde; \x7E &euro; \x80 &iexcl; \xA1
-		&cent; \xA2 &pound; \xA3 &curren; \xA4 &yen; \xA5 &brvbar; \xA6
-		&sect; \xA7 &uml; \xA8 &copy; \xA9 &ordf; \xAA &laquo; \xAB
-		&not; \xAC &shy; \xAD &reg; \xAE &hibar; \xAF &deg; \xB0
-		&plusmn; \xB1 &sup2; \xB2 &sup3; \xB3 &acute; \xB4 &micro; \xB5
-		&para; \xB6 &middot; \xB7 &cedil; \xB8 &sup1; \xB9 &ordm; \xBA
-		&raquo; \xBB &frac14; \xBC &frac12; \xBD &frac34; \xBE &iquest; \xBF
-		&Agrave; \xC0 &Aacute; \xC1 &Acirc; \xC2 &Atilde; \xC3 &Auml; \xC4
-		&Aring; \xC5 &AElig; \xC6 &Ccedil; \xC7 &Egrave; \xC8 &Eacute; \xC9
-		&Ecirc; \xCA &Euml; \xCB &Igrave; \xCC &Iacute; \xCD &Icirc; \xCE
-		&Iuml; \xCF &ETH; \xD0 &Ntilde; \xD1 &Ograve; \xD2 &Oacute; \xD3
-		&Ocirc; \xD4 &Otilde; \xD5 &Ouml; \xD6 &times; \xD7 &Oslash; \xD8
-		&Ugrave; \xD9 &Uacute; \xDA &Ucirc; \xDB &Uuml; \xDC &Yacute; \xDD
-		&THORN; \xDE &szlig; \xDF &agrave; \xE0 &aacute; \xE1 &acirc; \xE2
-		&atilde; \xE3 &auml; \xE4 &aring; \xE5 &aelig; \xE6 &ccedil; \xE7
-		&egrave; \xE8 &eacute; \xE9 &ecirc; \xEA &euml; \xEB &igrave; \xEC
-		&iacute; \xED &icirc; \xEE &iuml; \xEF &eth; \xF0 &ntilde; \xF1
-		&ograve; \xF2 &oacute; \xF3 &ocirc; \xF4 &otilde; \xF5 &ouml; \xF6
-		&divide; \xF7 &oslash; \xF8 &ugrave; \xF9 &uacute; \xFA &ucirc; \xFB
-		&uuml; \xFC &yacute; \xFD &thorn; \xFE &yuml; \xFF
-	};
-	set content [string map $escapes $content];
-	set content [string map [list "\]" "\\\]" "\[" "\\\[" "\$" "\\\$" "\\" "\\\\"] $content];
-	regsub -all -- {&#([[:digit:]]{1,5});} $content {[format %c [string trimleft "\1" "0"]]} content;
-	regsub -all -- {&#x([[:xdigit:]]{1,4});} $content {[format %c [scan "\1" %x]]} content;
-	regsub -all -- {&#?[[:alnum:]]{2,7};} $content "?" content;
-	return [subst $content];
 }
 
 # Read states on load
