@@ -1,0 +1,6 @@
+- add check for change in twitter followers periodically (daily?)
+- add twit_status to show account currently on
+- add block (or is it there?)
+- twit_info to see info of a screen name (bio, real name, site, etc)
+- do the sorting of params (see oauth.tcl, marked TODO there)
+- remove need to specify channel in twitter.tcl & consumer key/secret in oauth.tcl - store in file for client? -> easier to work with vcs and test...
