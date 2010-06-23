@@ -6,6 +6,8 @@
 #  - replace decode_html with htmlparse::mapEscapes (though this isn't even
 #    really needed i think!)
 #  - add search users (!twit_searchusers)
+#  - fix home timeline to use GET rather than POST. thanks to demonicpagan!
+#  - change GETs that have http query to process params better
 #
 # 0.2 - May 18 2010
 #  - add timeout to query to avoid hangs
@@ -276,8 +278,8 @@ proc twitter::updates {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::home_url [list count $argv]} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Retrieval error."
+	if {[catch {twitter::query $twitter::home_url [list count $argv] GET} result]} {
+		$twitter::output_cmd "PRIVMSG $chan :Retrieval error: $result."
 		return
 	}
 
@@ -332,11 +334,7 @@ proc twitter::search_users {nick uhost hand chan argv} {
 		return
 	}
 
-	set query [list q $argv per_page 5]
-	# we need params in url as so: param=param%20text&param2=text2
-	set url ${twitter::search_users_url}?q=[http::formatQuery $argv]&per_page=5
-
-	if {[catch {twitter::query $url $query GET} data]} {
+	if {[catch {twitter::query $twitter::search_users_url [list q $argv per_page 5] GET} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)."
 		return
 	}
@@ -484,7 +482,7 @@ proc twitter::tweet {nick uhost hand chan argv} {
 
 # Grab unseen status updates
 proc twitter::update {min hour day month year} {
-	if {[catch {twitter::query $twitter::home_url [list since_id $twitter::last_id count $twitter::max_updates]} result]} {
+	if {[catch {twitter::query $twitter::home_url [list since_id $twitter::last_id count $twitter::max_updates] GET} result]} {
 		putlog "Twitter is busy. (error: $result)"
 		return
 	}
@@ -516,9 +514,24 @@ proc twitter::query {url {query_list {}} {http_method {}}} {
 		error "OAuth not initialised. Try !twit_request_token"
 	}
 
+	# workaround as twitter expects ?param=value as part of URL for GET queries
+	# that have params!
+	if {$method eq "GET" && $query_list ne ""} {
+		set url ${url}[twitter::url_params $query_list]
+	}
+
 	set data [oauth::query_api $url $method $twitter::oauth_token $twitter::oauth_token_secret $query_list]
 
 	return [json::json2dict $data]
+}
+
+# return ?param1=value1&param2=value2... from key = param name dict
+proc twitter::url_params {params_dict} {
+	set str "?"
+	foreach key [dict keys $params_dict] {
+		set str ${str}${key}=[http::formatQuery [dict get $params_dict $key]]&
+	}
+	return [string trimright $str &]
 }
 
 # Get saved ids/state
