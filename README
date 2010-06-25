@@ -1,2 +1,8 @@
 Act as a Twitter <-> IRC gateway/client for a single Twitter account per
 instance of script.
+
+The files you need to run this on your bot are:
+- oauth.tcl
+- twitter.tcl
+
+Please read their header comments for usage information!
