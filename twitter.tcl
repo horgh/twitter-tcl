@@ -85,11 +85,9 @@ package require htmlparse
 namespace eval twitter {
 	variable channel "#OUTPUT_CHANNEL"
 
-	# Only have one of these uncommented
-	# Check for tweets every 1 min
-	#bind time - "* * * * *" twitter::update
-	# Check for tweets every 10 min
-	bind time - "?0 * * * *" twitter::update
+	# Check for tweets every 1, 5, or 10 min
+	# Must be 1, 5, or 10!
+	set update_time 10
 
 	# maximum number of tweets to fetch for display at one time
 	variable max_updates 10
@@ -136,6 +134,7 @@ namespace eval twitter {
 	bind pub	-|- "!followers" twitter::followers
 	bind pub	-|- "!following" twitter::following
 	bind pub	-|- "!retweet" twitter::retweet
+	bind pub	-|- "!update_interval" twitter::update_interval
 
 	# oauth binds
 	bind pub	-|- "!twit_request_token" twitter::oauth_request
@@ -189,6 +188,45 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 	set twitter::oauth_token_secret [dict get $data oauth_token_secret]
 	set screen_name [dict get $data screen_name]
 	$twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
+}
+
+proc twitter::set_update_time {delay} {
+	if {$delay != 1 && $delay != 10 && $delay != 5} {
+		set delay 10
+	}
+
+	twitter::flush_update_binds
+
+	if {$delay == 1} {
+		bind time - "* * * * *" twitter::update
+	} elseif {$delay == 5} {
+		bind time - "?0 * * * *" twitter::update
+		bind time - "?5 * * * *" twitter::update
+	} else {
+		bind time - "?0 * * * *" twitter::update
+	}
+}
+
+proc twitter::flush_update_binds {} {
+	foreach binding [binds time] {
+		if {[lindex $binding 4] == "twitter::update"} {
+			unbind [lindex $binding 0] [lindex $binding 1] [lindex $binding 2] [lindex $binding 4]
+		}
+	}
+}
+
+# change time between automatic update fetches
+proc twitter::update_interval {nick uhost hand chan argv} {
+	if {![channel get $chan twitter]} { return }
+
+	if {$argv != 1 && $argv != 10 && $argv != 5} {
+		$twitter::output_cmd "PRIVMSG $chan :Usage: !update_interval <1, 5, or 10>"
+		return
+	}
+
+	twitter::set_update_time $argv
+
+	$twitter::output_cmd "PRIVMSG $chan :Update interval set to $argv minute(s)."
 }
 
 # Output decoded/split string to given channel
@@ -591,5 +629,7 @@ proc twitter::split_line {max str} {
 
 # Read states on load
 twitter::get_states
+
+twitter::set_update_time $twitter::update_time
 
 putlog "twitter.tcl (c) fedex and horgh"
