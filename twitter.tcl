@@ -14,6 +14,8 @@
 #  - change flags for binds to requiring +o by default
 #  - remove output_channel variable in favour of output status updates to
 #    every channel that is set +twitter
+#  - add config option to not show tweetid
+#  - change output format
 #
 # 0.2 - May 18 2010
 #  - add timeout to query to avoid hangs
