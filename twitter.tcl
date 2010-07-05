@@ -8,6 +8,12 @@
 #  - add search users (!twit_searchusers)
 #  - fix home timeline to use GET rather than POST. thanks to demonicpagan!
 #  - change GETs that have http query to process params better
+#  - add !update_interval to change delay between tweet/timeline fetches
+#  - change specification of update interval in config slightly so that bind
+#    times are not needed to be manually edited
+#  - change flags for binds to requiring +o by default
+#  - remove output_channel variable in favour of output status updates to
+#    every channel that is set +twitter
 #
 # 0.2 - May 18 2010
 #  - add timeout to query to avoid hangs
@@ -28,18 +34,16 @@
 # Usage notes:
 #  - Stores states in variable $idfile file in eggdrop root directory
 #  - Default time between tweet fetches is 10 minutes. Alter the "bind time"
-#    option below to change to a different setting. Right now there is only
-#    options for 1 minute or 10 minutes.
-#  - Accepts commands issued by anyone right now! Perhaps if you wish to use
-#    in a channel with untrusted people, have one channel for output (set this
-#    as variable below and one to control the script (chanset this channel
-#    +twitter)
+#    option below to change to a different setting.
+#  - Requires +o on the bot to issue !commands. You can set multiple channels
+#    that the bot outputs and accepts commands on by setting each channel
+#    .chanset #channel +twitter
 #
 # Setup:
 #  - You MUST set consumer key/secret in oauth.tcl. Header describes how to get
 #    these values
-#  - Set the channel variable as the channel where tweets will be output
-#  - .chanset #channel +twitter to provide access to !commands in #channel
+#  - .chanset #channel +twitter to provide access to !commands in #channel. These
+#    channels also receive status update output.
 #  - Trying any command should prompt you to begin oauth authentication, or
 #    just try !twit_request_token if not. You will be given instructions on
 #    what to do after (calling !twit_access_token, etc).
@@ -55,7 +59,7 @@
 #  - Changing account / enabling oauth resets tweet tracking state so you will
 #    probably be flooded by up to 10 tweets
 #
-# Commands:
+# Commands (probably not complete!):
 #  - !twit/!tweet - send a tweet
 #  - !twit_msg - private msg
 #  - !twit_trends
@@ -83,8 +87,6 @@ package require json
 package require htmlparse
 
 namespace eval twitter {
-	variable channel "#OUTPUT_CHANNEL"
-
 	# Check for tweets every 1, 5, or 10 min
 	# Must be 1, 5, or 10!
 	set update_time 10
@@ -102,7 +104,6 @@ namespace eval twitter {
 	variable oauth_token_secret
 
 	variable output_cmd "putserv"
-	#variable output_cmd "cd::putnow"
 
 	variable last_id
 	variable last_update
@@ -119,26 +120,26 @@ namespace eval twitter {
 	variable followers_url "http://twitter.com/statuses/followers.json"
 	variable following_url "http://twitter.com/statuses/friends.json"
 	variable retweet_url "http://api.twitter.com/1/statuses/retweet/"
-	variable search_users_url http://api.twitter.com/1/users/search.json
+	variable search_users_url "http://api.twitter.com/1/users/search.json"
 
-	bind pub	-|- "!twit" twitter::tweet
-	bind pub	-|- "!tweet" twitter::tweet
-	bind pub	-|- "!twit_msg" twitter::msg
-	bind pub	-|- "!twit_trends" twitter::trends
-	bind pub	-|- "!follow" twitter::follow
-	bind pub	-|- "!unfollow" twitter::unfollow
-	bind pub	-|- "!twit_updates" twitter::updates
-	bind pub	-|- "!twit_msgs" twitter::msgs
-	bind pub	-|- "!twit_search" twitter::search
-	bind pub	-|- "!twit_searchusers" twitter::search_users
-	bind pub	-|- "!followers" twitter::followers
-	bind pub	-|- "!following" twitter::following
-	bind pub	-|- "!retweet" twitter::retweet
-	bind pub	-|- "!update_interval" twitter::update_interval
+	bind pub	o|o "!twit" twitter::tweet
+	bind pub	o|o "!tweet" twitter::tweet
+	bind pub	o|o "!twit_msg" twitter::msg
+	bind pub	o|o "!twit_trends" twitter::trends
+	bind pub	o|o "!follow" twitter::follow
+	bind pub	o|o "!unfollow" twitter::unfollow
+	bind pub	o|o "!twit_updates" twitter::updates
+	bind pub	o|o "!twit_msgs" twitter::msgs
+	bind pub	o|o "!twit_search" twitter::search
+	bind pub	o|o "!twit_searchusers" twitter::search_users
+	bind pub	o|o "!followers" twitter::followers
+	bind pub	o|o "!following" twitter::following
+	bind pub	o|o "!retweet" twitter::retweet
+	bind pub	o|o "!update_interval" twitter::update_interval
 
 	# oauth binds
-	bind pub	-|- "!twit_request_token" twitter::oauth_request
-	bind pub	-|- "!twit_access_token" twitter::oauth_access
+	bind pub	o|o "!twit_request_token" twitter::oauth_request
+	bind pub	o|o "!twit_access_token" twitter::oauth_access
 
 	bind evnt	-|- "save" twitter::write_states
 
@@ -529,7 +530,11 @@ proc twitter::update {min hour day month year} {
 
 	foreach status $result {
 		dict with status {
-			twitter::output_update $twitter::channel [dict get $user screen_name] $id $text
+			foreach ch [channels] {
+				if {[channel get $ch twitter]} {
+					twitter::output_update $ch [dict get $user screen_name] $id $text
+				}
+			}
 			if {$id > $twitter::last_id} {
 				set twitter::last_id $id
 			}
