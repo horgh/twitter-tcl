@@ -94,6 +94,10 @@ namespace eval twitter {
 	# maximum number of tweets to fetch for display at one time
 	variable max_updates 10
 
+	# show tweet number (1 = on, 0 = off)
+	# This is only really relevant if you are going to !retweet
+	set show_tweetid 0
+
 	# You don't really need to set anything below here
 
 	# holds states and ids of seen tweets
@@ -233,15 +237,16 @@ proc twitter::update_interval {nick uhost hand chan argv} {
 # Output decoded/split string to given channel
 proc twitter::output {chan str} {
 	set str [htmlparse::mapEscapes $str]
-#	foreach line [twitter::split_line 400 $str] {
-#		$twitter::output_cmd "PRIVMSG $chan :$line"
-#	}
 	$twitter::output_cmd "PRIVMSG $chan :$str"
 }
 
 # Format status updates and output
 proc twitter::output_update {chan name id str} {
-	twitter::output $chan "\[\002$name\002\] $str ($id)"
+	set out "\002$name\002: $str"
+	if {$twitter::show_tweetid} {
+		append out " ($id)"
+	}
+	twitter::output $chan $out
 }
 
 # Retweet given id
