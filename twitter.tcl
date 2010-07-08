@@ -106,7 +106,7 @@ namespace eval twitter {
 	# You don't really need to set anything below here
 
 	# holds state (id of last seen tweet, oauth keys)
-	variable state_file "twitter.state"
+	variable state_file "scripts/twitter.state"
 
 	variable output_cmd putserv
 
