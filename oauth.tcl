@@ -1,6 +1,7 @@
 #
 # 0.2 - ???
 #  - create base_url correctly for signing (remove ?params=...)
+#  - improve error msg if http timeout occurs
 #
 # 0.1 - May 18 2010
 #  - Initial release
@@ -129,7 +130,11 @@ proc oauth::query {url method oauth_header {query {}}} {
 	set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout]
 	set data [http::data $token]
 	set ncode [http::ncode $token]
+	set status [http::status $token]
 	http::cleanup $token
+	if {$status == "reset"} {
+		error "OAuth failure: HTTP timeout"
+	}
 	if {$ncode != 200} {
 		error "OAuth failure: (code: $ncode) $data"
 	}
