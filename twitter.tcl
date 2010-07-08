@@ -16,6 +16,10 @@
 #    every channel that is set +twitter
 #  - add config option to not show tweetid
 #  - change output format
+#  - change default state_file filename & variable
+#  - require consumer key/secret specified in !twit_request_token rather than
+#    hardcode into oauth.tcl
+#  - fix failed tweet msg to make more sense (not assume http error)
 #
 # 0.2 - May 18 2010
 #  - add timeout to query to avoid hangs
@@ -34,7 +38,7 @@
 # those you follow on the given account.
 #
 # Usage notes:
-#  - Stores states in variable $idfile file in eggdrop root directory
+#  - Stores states in variable $state_file file in eggdrop root directory
 #  - Default time between tweet fetches is 10 minutes. Alter the "bind time"
 #    option below to change to a different setting.
 #  - Requires +o on the bot to issue !commands. You can set multiple channels
@@ -42,10 +46,10 @@
 #    .chanset #channel +twitter
 #
 # Setup:
-#  - You MUST set consumer key/secret in oauth.tcl. Header describes how to get
-#    these values
-#  - .chanset #channel +twitter to provide access to !commands in #channel. These
-#    channels also receive status update output.
+#  - Register for consumer key/secret at http://twitter.com/oauth_clients which
+#    will be needed to authenticate with oauth (and !twit_request_token)
+#  - .chanset #channel +twitter to provide access to !commands in #channel.
+#    These channels also receive status update output.
 #  - Trying any command should prompt you to begin oauth authentication, or
 #    just try !twit_request_token if not. You will be given instructions on
 #    what to do after (calling !twit_access_token, etc).
@@ -74,12 +78,11 @@
 #  - !following
 #  - !retweet
 #  - !twit_searchusers
+#  - !update_interval
+#
 # oauth commands
-#  - !twit_request_token
+#  - !twit_request_token <consumer_key> <consumer_secret>
 #  - !twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>
-#
-# TODO:
-#
 
 package require http
 # oauth.tcl library
@@ -102,14 +105,16 @@ namespace eval twitter {
 
 	# You don't really need to set anything below here
 
-	# holds states and ids of seen tweets
-	variable idfile "twitter.last_id"
+	# holds state (id of last seen tweet, oauth keys)
+	variable state_file "twitter.state"
 
-	# These may be set through running script
+	variable output_cmd putserv
+
+	# These may be set through running the script
 	variable oauth_token
 	variable oauth_token_secret
-
-	variable output_cmd "putserv"
+	variable oauth_consumer_key
+	variable oauth_consumer_secret
 
 	variable last_id
 	variable last_update
@@ -155,8 +160,14 @@ namespace eval twitter {
 # handle retrieval of oauth request token
 proc twitter::oauth_request {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
+	set argv [split $argv]
+	if {[llength $argv] != 2} {
+		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_request_token <consumer key> <consumer secret>"
+		return
+	}
+	lassign $argv twitter::oauth_consumer_key twitter::oauth_consumer_secret
 
-	if {[catch {oauth::get_request_token} data]} {
+	if {[catch {oauth::get_request_token $twitter::oauth_consumer_key $twitter::oauth_consumer_secret} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
@@ -176,12 +187,9 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_access_token <oauth_token> <oauth_token_secret> <PIN> (get these from !twit_request_token)"
 		return
 	}
+	lassign $args oauth_token oauth_token_secret pin
 
-	set oauth_token [lindex $args 0]
-	set oauth_token_secret [lindex $args 1]
-	set pin [lindex $args 2]
-
-	if {[catch {oauth::get_access_token $oauth_token $oauth_token_secret $pin} data]} {
+	if {[catch {oauth::get_access_token $twitter::oauth_consumer_key $twitter::oauth_consumer_secret $oauth_token $oauth_token_secret $pin} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
@@ -512,7 +520,7 @@ proc twitter::tweet {nick uhost hand chan argv} {
 	}
 
 	if {[catch {twitter::query $twitter::status_url [list status $argv]} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Tweet failed! ($argv) HTTP error: $result."
+		$twitter::output_cmd "PRIVMSG $chan :Tweet failed! ($argv) Error: $result."
 		return
 	}
 
@@ -570,7 +578,7 @@ proc twitter::query {url {query_list {}} {http_method {}}} {
 		set url ${url}[twitter::url_params $query_list]
 	}
 
-	set data [oauth::query_api $url $method $twitter::oauth_token $twitter::oauth_token_secret $query_list]
+	set data [oauth::query_api $url $twitter::oauth_consumer_key $twitter::oauth_consumer_secret $method $twitter::oauth_token $twitter::oauth_token_secret $query_list]
 
 	return [json::json2dict $data]
 }
@@ -586,7 +594,7 @@ proc twitter::url_params {params_dict} {
 
 # Get saved ids/state
 proc twitter::get_states {} {
-	if {[catch {open $twitter::idfile r} fid]} {
+	if {[catch {open $twitter::state_file r} fid]} {
 		set twitter::last_id 1
 		set twitter::last_update 1
 		set twitter::last_msg 1
@@ -595,7 +603,6 @@ proc twitter::get_states {} {
 
 	set data [read -nonewline $fid]
 	set states [split $data \n]
-
 	close $fid
 
 	set twitter::last_id [lindex $states 0]
@@ -603,16 +610,20 @@ proc twitter::get_states {} {
 	set twitter::last_msg [lindex $states 2]
 	set twitter::oauth_token [lindex $states 3]
 	set twitter::oauth_token_secret [lindex $states 4]
+	set twitter::oauth_consumer_key [lindex $states 5]
+	set twitter::oauth_consumer_secret [lindex $states 6]
 }
 
 # Save states to file
 proc twitter::write_states {args} {
-	set fid [open $twitter::idfile w]
+	set fid [open $twitter::state_file w]
 	puts $fid $twitter::last_id
 	puts $fid $twitter::last_update
 	puts $fid $twitter::last_msg
 	puts $fid $twitter::oauth_token
 	puts $fid $twitter::oauth_token_secret
+	puts $fid $twitter::oauth_consumer_key
+	puts $fid $twitter::oauth_consumer_secret
 	close $fid
 }
 
