@@ -247,6 +247,7 @@ proc twitter::update_interval {nick uhost hand chan argv} {
 # Output decoded/split string to given channel
 proc twitter::output {chan str} {
 	set str [htmlparse::mapEscapes $str]
+	set str [regsub -all -- {\n} $str " "]
 	$twitter::output_cmd "PRIVMSG $chan :$str"
 }
 
