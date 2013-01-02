@@ -45,13 +45,16 @@ package require http
 # tcllib packages
 package require base64
 package require sha1
+package require tls
 
 package provide oauth 0.1
 
+http::register https 443 ::tls::socket
+
 namespace eval oauth {
-	variable request_token_url http://api.twitter.com/oauth/request_token
+	variable request_token_url https://api.twitter.com/oauth/request_token
 	variable authorize_url https://api.twitter.com/oauth/authorize
-	variable access_token_url http://api.twitter.com/oauth/access_token
+	variable access_token_url https://api.twitter.com/oauth/access_token
 
 	# timeout for http requests (ms)
 	variable timeout 60000

@@ -120,18 +120,18 @@ namespace eval twitter {
 	variable last_update
 	variable last_msg
 
-	variable status_url "http://twitter.com/statuses/update.json"
-	variable home_url "http://api.twitter.com/1/statuses/home_timeline.json"
-	variable msg_url "http://twitter.com/direct_messages/new.json"
-	variable msgs_url "http://twitter.com/direct_messages.json"
+	variable status_url "https://api.twitter.com/1/statuses/update.json"
+	variable home_url "https://api.twitter.com/1/statuses/home_timeline.json"
+	variable msg_url "http://api.twitter.com/1/direct_messages/new.json"
+	variable msgs_url "http://api.twitter.com/1/direct_messages.json"
 	variable trends_curr_url "http://search.twitter.com/trends/current.json"
-	variable follow_url "http://twitter.com/friendships/create.json"
-	variable unfollow_url "http://twitter.com/friendships/destroy.json"
+	variable follow_url "http://api.twitter.com/1/friendships/create.json"
+	variable unfollow_url "http://api.twitter.com/1/friendships/destroy.json"
 	variable search_url "http://search.twitter.com/search.json"
-	variable followers_url "http://twitter.com/statuses/followers.json"
-	variable following_url "http://twitter.com/statuses/friends.json"
-	variable retweet_url "http://api.twitter.com/1/statuses/retweet/"
-	variable search_users_url "http://api.twitter.com/1/users/search.json"
+	variable followers_url "http://api.twitter.com/1/statuses/followers.json"
+	variable following_url "http://api.twitter.com/1/statuses/friends.json"
+	variable retweet_url "https://api.twitter.com/1/statuses/retweet/"
+	variable search_users_url "https://api.twitter.com/1/users/search.json"
 
 	bind pub	o|o "!twit" twitter::tweet
 	bind pub	o|o "!tweet" twitter::tweet
