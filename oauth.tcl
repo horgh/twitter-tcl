@@ -45,13 +45,16 @@ package require http
 # tcllib packages
 package require base64
 package require sha1
+package require tls
 
 package provide oauth 0.1
 
+http::register https 443 ::tls::socket
+
 namespace eval oauth {
-	variable request_token_url http://api.twitter.com/oauth/request_token
+	variable request_token_url https://api.twitter.com/oauth/request_token
 	variable authorize_url https://api.twitter.com/oauth/authorize
-	variable access_token_url http://api.twitter.com/oauth/access_token
+	variable access_token_url https://api.twitter.com/oauth/access_token
 
 	# timeout for http requests (ms)
 	variable timeout 60000
@@ -122,7 +125,11 @@ proc oauth::query_call {url consumer_key consumer_secret method params {sign_par
 # do http request with oauth header
 proc oauth::query {url method oauth_header {query {}}} {
 	set header [list Authorization [concat "OAuth" $oauth_header]]
-	set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout]
+	if {$method != "GET"} {
+		set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout]
+	} else {
+		set token [http::geturl $url -headers $header -method $method -timeout $oauth::timeout]
+	}
 	set data [http::data $token]
 	set ncode [http::ncode $token]
 	set status [http::status $token]
