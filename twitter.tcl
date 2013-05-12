@@ -124,7 +124,7 @@ namespace eval twitter {
 	variable home_url "https://api.twitter.com/1/statuses/home_timeline.json"
 	variable msg_url "http://api.twitter.com/1/direct_messages/new.json"
 	variable msgs_url "http://api.twitter.com/1/direct_messages.json"
-	variable trends_curr_url "http://search.twitter.com/trends/current.json"
+	variable trends_place_url "https://api.twitter.com/1.1/trends/place.json"
 	variable follow_url "http://api.twitter.com/1/friendships/create.json"
 	variable unfollow_url "http://api.twitter.com/1/friendships/destroy.json"
 	variable search_url "http://search.twitter.com/search.json"
@@ -136,7 +136,7 @@ namespace eval twitter {
 	bind pub	o|o "!twit" twitter::tweet
 	bind pub	o|o "!tweet" twitter::tweet
 	bind pub	o|o "!twit_msg" twitter::msg
-	bind pub	o|o "!twit_trends" twitter::trends
+	bind pub	o|o "!twit_trends" twitter::trends_global
 	bind pub	o|o "!follow" twitter::follow
 	bind pub	o|o "!unfollow" twitter::unfollow
 	bind pub	o|o "!twit_updates" twitter::updates
@@ -438,22 +438,31 @@ proc twitter::following {nick uhost hand chan argv} {
 	twitter::output $chan "Following: $following"
 }
 
-# Get trends
-proc twitter::trends {nick uhost hand chan argv} {
+# Get global trends
+# GET /1.1/trends/place.json?id=1 provides us with the 'global'
+# trends.
+# we can provide different ids to see trends in other locations.
+proc twitter::trends_global {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
-	if {[catch {twitter::query $twitter::trends_curr_url} result]} {
+	if {[catch {twitter::query $twitter::trends_place_url [list id 1] GET} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Trend fetch failed!"
 		return
 	}
 
+	# we receive a 'list' with one element - the object with our result.
+	# the object has keys 'trends' (list of trends), 'as_of', 'created_at',
+	# and 'locations'.
+	set result [lindex $result 0]
+	# pull out the trends object. this is a list of objects (dicts). the most
+	# relevant piece of data we care about is the on the key 'name' - the
+	# trend name.
 	set trends [dict get $result trends]
+
 	set output []
 	set count 0
-	foreach day [dict keys $trends] {
-		foreach trend [dict get $trends $day] {
-			set output "$output\002#[incr count]\002 [dict get $trend name] "
-		}
+	foreach trend $trends {
+		set output "$output\002#[incr count]\002 [dict get $trend name] "
 	}
 
 	twitter::output $chan $output
