@@ -94,10 +94,10 @@ package require htmlparse
 namespace eval twitter {
 	# Check for tweets every 1, 5, or 10 min
 	# Must be 1, 5, or 10!
-	set update_time 1
+	set update_time 10
 
 	# maximum number of tweets to fetch for display at one time
-	variable max_updates 3
+	variable max_updates 10
 
 	# show tweet number (1 = on, 0 = off)
 	# This is only really relevant if you are going to !retweet
@@ -252,7 +252,7 @@ proc twitter::output {chan str} {
 
 # Format status updates and output
 proc twitter::output_update {chan name id str} {
-	set out "\037Twitter\037: \002$name\002: $str"
+	set out "\002$name\002: $str"
 	if {$twitter::show_tweetid} {
 		append out " ($id)"
 	}
