@@ -157,7 +157,7 @@ namespace eval twitter {
 	setudef flag twitter
 }
 
-# handle retrieval of oauth request token
+# Handle retrieval of OAuth request token
 proc twitter::oauth_request {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 	set argv [split $argv]
@@ -177,7 +177,7 @@ proc twitter::oauth_request {nick uhost hand chan argv} {
 	$twitter::output_cmd "PRIVMSG $chan :Then call !twit_access_token [dict get $data oauth_token] [dict get $data oauth_token_secret] <PIN from authorization URL of !twit_request_token>"
 }
 
-# handle retrieval of oauth access token
+# Handle retrieval of OAuth access token
 # if success, $twitter::oauth_token and $twitter::oauth_token_secret stored
 proc twitter::oauth_access {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
@@ -205,6 +205,7 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 	$twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
 }
 
+# Set update time
 proc twitter::set_update_time {delay} {
 	if {$delay != 1 && $delay != 10 && $delay != 5} {
 		set delay 10
@@ -214,14 +215,12 @@ proc twitter::set_update_time {delay} {
 
 	if {$delay == 1} {
 		bind time - "* * * * *" twitter::update
-	} elseif {$delay == 5} {
-		bind time - "?0 * * * *" twitter::update
-		bind time - "?5 * * * *" twitter::update
 	} else {
-		bind time - "?0 * * * *" twitter::update
+		bind time - "*/$delay * * * *" twitter::update
 	}
 }
 
+# Flush update binds
 proc twitter::flush_update_binds {} {
 	foreach binding [binds time] {
 		if {[lindex $binding 4] == "twitter::update"} {
@@ -230,7 +229,7 @@ proc twitter::flush_update_binds {} {
 	}
 }
 
-# change time between automatic update fetches
+# Change time between automatic update fetches
 proc twitter::update_interval {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
@@ -412,7 +411,7 @@ proc twitter::followers {nick uhost hand chan argv} {
 
 	set followers []
 	foreach user $result {
-		set followers "$followers[dict get $user screen_name] "
+		append followers "[dict get $user screen_name] "
 	}
 
 	twitter::output $chan "Followers: $followers"
@@ -432,7 +431,7 @@ proc twitter::following {nick uhost hand chan argv} {
 
 	set following []
 	foreach user $result {
-		set following "$following[dict get $user screen_name] "
+		append following "[dict get $user screen_name] "
 	}
 
 	twitter::output $chan "Following: $following"
@@ -500,6 +499,8 @@ proc twitter::msgs {nick uhost hand chan argv} {
 }
 
 # Send direct message to a user
+# TODO: replace lrange by a substring starting at the first space to fix 'unmatched open brace in list'
+#       issue if the tweet contains one { not balanced by a }.
 proc twitter::msg {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 	set argv [split $argv]
@@ -585,21 +586,12 @@ proc twitter::query {url {query_list {}} {http_method {}}} {
 	# workaround as twitter expects ?param=value as part of URL for GET queries
 	# that have params!
 	if {$method eq "GET" && $query_list ne ""} {
-		set url ${url}[twitter::url_params $query_list]
+		append url ?[http::formatQuery {*}$query_list]
 	}
 
 	set data [oauth::query_api $url $twitter::oauth_consumer_key $twitter::oauth_consumer_secret $method $twitter::oauth_token $twitter::oauth_token_secret $query_list]
 
 	return [json::json2dict $data]
-}
-
-# return ?param1=value1&param2=value2... from key = param name dict
-proc twitter::url_params {params_dict} {
-	set str "?"
-	foreach key [dict keys $params_dict] {
-		set str ${str}${key}=[http::formatQuery [dict get $params_dict $key]]&
-	}
-	return [string trimright $str &]
 }
 
 # Get saved ids/state
@@ -638,7 +630,7 @@ proc twitter::write_states {args} {
 }
 
 # Split long line into list of strings for multi line output to irc
-# Splits into strings of ~max
+# Split into strings of ~max
 # by fedex
 proc twitter::split_line {max str} {
 	set last [expr {[string length $str] -1}]
