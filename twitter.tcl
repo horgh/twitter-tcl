@@ -1,93 +1,11 @@
 #
-# Created by fedex and horgh. (www.summercat.com)
+# A twitter client/gateway for IRC.
 #
-# 0.3 - ???
-#  - fix direct msg
-#  - replace decode_html with htmlparse::mapEscapes (though this isn't even
-#    really needed i think!)
-#  - add search users (!twit_searchusers)
-#  - fix home timeline to use GET rather than POST. thanks to demonicpagan!
-#  - change GETs that have http query to process params better
-#  - add !update_interval to change delay between tweet/timeline fetches
-#  - change specification of update interval in config slightly so that bind
-#    times are not needed to be manually edited
-#  - change flags for binds to requiring +o by default
-#  - remove output_channel variable in favour of output status updates to
-#    every channel that is set +twitter
-#  - add config option to not show tweetid
-#  - change output format
-#  - change default state_file filename & variable
-#  - require consumer key/secret specified in !twit_request_token rather than
-#    hardcode into oauth.tcl
-#  - fix failed tweet msg to make more sense (not assume http error)
+# By fedex and horgh.
 #
-# 0.2 - May 18 2010
-#  - add timeout to query to avoid hangs
-#  - update decode_html for more accurate utf translation
-#  - replace basic auth with oauth
-#  - misc cleanup/small bugfixes
-#  - add max_updates variable to control the number of status to display from
-#    one query
-#
-# 0.1 - Feb 6 2010
-#  - initial release
-#
-# Requirements: Tcl 8.5+, "recent" tcllib, oauth.tcl library
-#
-# Essentially a twitter client for IRC. Follow updates from tweets of all
-# those you follow on the given account.
-#
-# Usage notes:
-#  - Stores states in variable $state_file file in eggdrop root directory
-#  - Default time between tweet fetches is 10 minutes. Alter the "bind time"
-#    option below to change to a different setting.
-#  - Requires +o on the bot to issue !commands. You can set multiple channels
-#    that the bot outputs and accepts commands on by setting each channel
-#    .chanset #channel +twitter
-#
-# Setup:
-#  - Register for consumer key/secret at http://twitter.com/oauth_clients which
-#    will be needed to authenticate with oauth (and !twit_request_token)
-#  - .chanset #channel +twitter to provide access to !commands in #channel.
-#    These channels also receive status update output.
-#  - Trying any command should prompt you to begin oauth authentication, or
-#    just try !twit_request_token if not. You will be given instructions on
-#    what to do after (calling !twit_access_token, etc).
-#  - !twit_request_token/!twit_access_token should only need to be done once
-#    unless you wish to change the account that is used
-#
-# Authentication notes:
-#  - To begin authentication on an account use !twit_request_token
-#  - To change which account the script follows use !twit_request_token make
-#    sure you are logged into Twitter on the account you want and visit the
-#    authentication URL (or login to the account you want at this URL)
-#    and do !twit_access_token as before
-#  - Changing account / enabling oauth resets tweet tracking state so you will
-#    probably be flooded by up to 10 tweets
-#
-# Commands (probably not complete!):
-#  - !twit/!tweet - send a tweet
-#  - !twit_msg - private msg
-#  - !twit_trends
-#  - !follow
-#  - !unfollow
-#  - !twit_updates
-#  - !twit_msgs
-#  - !twit_search
-#  - !followers
-#  - !following
-#  - !retweet
-#  - !twit_searchusers
-#  - !update_interval
-#
-# oauth commands
-#  - !twit_request_token <consumer_key> <consumer_secret>
-#  - !twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>
 
 package require http
-# oauth.tcl library
 package require oauth
-# tcllib packages
 package require json
 package require htmlparse
 
@@ -103,7 +21,7 @@ namespace eval twitter {
 	# This is only really relevant if you are going to !retweet
 	set show_tweetid 0
 
-	# You don't really need to set anything below here
+	# you shouldn't need to change anything below this point.
 
 	# holds state (id of last seen tweet, oauth keys)
 	variable state_file "scripts/twitter.state"

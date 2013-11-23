@@ -1,48 +1,10 @@
 #
-# 0.2 - ???
-#  - create base_url correctly for signing (remove ?params=...)
-#  - improve error msg if http timeout occurs
-#  - remove need to hardcode consumer key/secret by providing them as arguments
-#    to the various functions
-#
-# 0.1 - May 18 2010
-#  - Initial release
-# 
-# by horgh (www.summercat.com)
-#
 # OAuth (1.0/1.0a) library for Twitter
 #
-# Requirements:
-#  - Tcl 8.5+ and "recent" tcllib (developed with tcllib 1.12)
-#
-# Setup for users:
-#  - Register for consumer key/secret at http://twitter.com/oauth_clients
-#
-# Library usage:
-#  - You can store oauth_token/oauth_token_secret from get_access_token[] and
-#    use it indefinitely (unless twitter starts expiring the tokens). Thus the
-#    setup (below) need only be done once by storing and reusing these.
-#
-#  - start with oauth::get_request_token
-#   - usage: oauth::get_request_token $consumer_key $consumer_secret
-#   - returns dict including oauth_token/oauth_token_secret for https://api.twitter.com/oauth/authorize?oauth_token=OAUTH_TOKEN
-#   - going to this url, logging in, and allowing will give a PIN e.g. 1021393
-#
-#  - then use pin as value for oauth_verifier in oauth::get_access_token
-#   - Usage: oauth::get_access_token $consumer_key $consumer_token $oauth_token $oauth_token_secret $pin
-#   - also use oauth_token/oauth_token_secret from get_request_token here
-#   - returns dict including new oauth_token & oauth_token_secret (access token)
-#
-#  - afterwards use oauth_token/oauth_token_secret from get_access_token in
-#    oauth::query_api to make api calls
-#   - usage: oauth::query_api $url $consumer_key $consumer_secret $http_method $oauth_token $oauth_token_secret $key:value_http_query
-#   - the $key:value_http_query is such that you would pass to http::formatQuery
-#     e.g. status {this is a tweet}
-#   - example call: puts [oauth::query_api http://api.twitter.com/1/statuses/update.json <key> <secret> POST $oauth_token_done $oauth_token_secret_done [list status "does it work"]]
+# By horgh.
 #
 
 package require http
-# tcllib packages
 package require base64
 package require sha1
 package require tls
