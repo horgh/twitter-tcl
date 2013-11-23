@@ -15,15 +15,24 @@ http::register https 443 ::tls::socket
 
 namespace eval oauth {
 	variable request_token_url https://api.twitter.com/oauth/request_token
-	variable authorize_url https://api.twitter.com/oauth/authorize
-	variable access_token_url https://api.twitter.com/oauth/access_token
+	variable authorize_url     https://api.twitter.com/oauth/authorize
+	variable access_token_url  https://api.twitter.com/oauth/access_token
 
 	# timeout for http requests (ms)
 	variable timeout 60000
 }
 
-# first step
-proc oauth::get_request_token {consumer_key consumer_secret} {
+# first step.
+#
+# the consumer key and consumer secret are those set for a specific oauth client
+# and may be found from the list of clients on twitter's developer's website.
+#
+# we return a dict with the data to request a pin.
+# relevant keys:
+#   auth_url
+#   oauth_token
+#   oauth_token_secret
+proc ::oauth::get_request_token {consumer_key consumer_secret} {
 	set params [list [list oauth_callback oob]]
 	set data [oauth::query_call $oauth::request_token_url $consumer_key $consumer_secret GET $params]
 
@@ -35,9 +44,16 @@ proc oauth::get_request_token {consumer_key consumer_secret} {
 }
 
 # second step
-# for twitter, oauth_verifier is pin
-# oauth_token & oauth_token_secret from get_request_token
-proc oauth::get_access_token {consumer_key consumer_secret oauth_token oauth_token_secret oauth_verifier} {
+# for twitter, oauth_verifier is the pin.
+# oauth_token & oauth_token_secret are found from get_request_token
+#
+# we return a dict with the data used in making authenticated requests.
+# relevant keys:
+#   oauth_token
+#   oauth_secret
+# note these tokens are different than those sent in the original
+# get_request_token response.
+proc ::oauth::get_access_token {consumer_key consumer_secret oauth_token oauth_token_secret oauth_verifier} {
 	set params [list [list oauth_token $oauth_token] [list oauth_verifier $oauth_verifier]]
 	set result [oauth::query_call $oauth::access_token_url $consumer_key $consumer_secret POST $params]
 
@@ -45,9 +61,9 @@ proc oauth::get_access_token {consumer_key consumer_secret oauth_token oauth_tok
 	return [oauth::params_to_dict $result]
 }
 
-# after first two steps succeed, we now can make api requests to twitter
+# after the first two steps succeed, we now can make AI requests to twitter.
 # query_dict is POST request to twitter as before, key:value pairing (dict)
-# oauth_token, oauth_token_secret from get_access_token
+# oauth_token, oauth_token_secret are from get_access_token
 proc oauth::query_api {url consumer_key consumer_secret method oauth_token oauth_token_secret query_dict} {
 	set params [list [list oauth_token $oauth_token]]
 	set result [oauth::query_call $url $consumer_key $consumer_secret $method $params $query_dict $oauth_token_secret]
@@ -87,6 +103,7 @@ proc oauth::query_call {url consumer_key consumer_secret method params {sign_par
 # do http request with oauth header
 proc oauth::query {url method oauth_header {query {}}} {
 	set header [list Authorization [concat "OAuth" $oauth_header]]
+
 	if {$method != "GET"} {
 		set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout]
 	} else {

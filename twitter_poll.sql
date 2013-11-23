@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS tweet (
+  id SERIAL,
+  nick VARCHAR NOT NULL,
+  text TEXT NOT NULL,
+  read BOOLEAN DEFAULT false NOT NULL,
+  time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+  -- tweet update unique id.
+  tweet_id BIGINT NOT NULL,
+
+  UNIQUE (tweet_id),
+  PRIMARY KEY (id)
+);

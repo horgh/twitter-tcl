@@ -9,6 +9,12 @@ Twitter libraries and client scripts in Tcl.
    allow various other Twitter requests, such as sending tweets, and
    following or unfollowing.
 
+ * twitter_poll.tcl - A script that polls a home timeline for tweets and
+   inserts them into a postgres database.
+
+ * test_oauth.tcl - A script to test authentication with OAuth.
+   This can also be used to build the tokens/keys needed for OAuth.
+
 
 # Requirements
 
@@ -16,7 +22,7 @@ Twitter libraries and client scripts in Tcl.
 
  * Tcl (unknown minimum version. tested on 8.5)
 
- * twitter.tcl depends on oauth.tcl
+ * twitter.tcl depends on oauth.tcl and twitlib.tcl
 
 
 # twitter.tcl Usage information
@@ -88,11 +94,11 @@ of the script for the canonical list.
 
   - Register for consumer key/secret at http://twitter.com/oauth_clients
 
+
 ### Library usage:
 
   - You can store `oauth_token` / `oauth_token_secret` from
-    `get_access_token[]` and use it indefinitely (unless twitter starts
-    expiring the tokens).
+    `::oauth::get_access_token` and use them indefinitely.
     Thus the setup (below) need only be done once by storing and reusing
     these.
 

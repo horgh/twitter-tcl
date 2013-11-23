@@ -5,9 +5,9 @@
 #
 
 package require http
-package require oauth
-package require json
 package require htmlparse
+package require oauth
+package require twitlib
 
 namespace eval twitter {
 	# Check for tweets every 1, 5, or 10 min
@@ -28,29 +28,10 @@ namespace eval twitter {
 
 	variable output_cmd putserv
 
-	# These may be set through running the script
-	variable oauth_token
-	variable oauth_token_secret
-	variable oauth_consumer_key
-	variable oauth_consumer_secret
-
-	variable last_id
 	variable last_update
 	variable last_msg
 
-	variable status_url "https://api.twitter.com/1.1/statuses/update.json"
-	variable home_url "https://api.twitter.com/1.1/statuses/home_timeline.json"
-	variable msg_url "http://api.twitter.com/1.1/direct_messages/new.json"
-	variable msgs_url "http://api.twitter.com/1.1/direct_messages.json"
-	variable trends_place_url "https://api.twitter.com/1.1/trends/place.json"
-	variable follow_url "http://api.twitter.com/1.1/friendships/create.json"
-	variable unfollow_url "http://api.twitter.com/1.1/friendships/destroy.json"
-	variable search_url "http://search.twitter.com/search.json"
-	variable followers_url "http://api.twitter.com/1.1/statuses/followers.json"
-	variable following_url "http://api.twitter.com/1.1/statuses/friends.json"
-	variable retweet_url "https://api.twitter.com/1.1/statuses/retweet/"
-	variable search_users_url "https://api.twitter.com/1.1/users/search.json"
-
+	# twitter binds.
 	bind pub	o|o "!twit" twitter::tweet
 	bind pub	o|o "!tweet" twitter::tweet
 	bind pub	o|o "!twit_msg" twitter::msg
@@ -70,8 +51,10 @@ namespace eval twitter {
 	bind pub	o|o "!twit_request_token" twitter::oauth_request
 	bind pub	o|o "!twit_access_token" twitter::oauth_access
 
+	# save our state on save event.
 	bind evnt	-|- "save" twitter::write_states
 
+	# add channel flag +/-twitter
 	setudef flag twitter
 }
 
@@ -83,9 +66,9 @@ proc twitter::oauth_request {nick uhost hand chan argv} {
 		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_request_token <consumer key> <consumer secret>"
 		return
 	}
-	lassign $argv twitter::oauth_consumer_key twitter::oauth_consumer_secret
+	lassign $argv ::twitlib::oauth_consumer_key ::twitlib::oauth_consumer_secret
 
-	if {[catch {oauth::get_request_token $twitter::oauth_consumer_key $twitter::oauth_consumer_secret} data]} {
+	if {[catch {::oauth::get_request_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
@@ -96,7 +79,7 @@ proc twitter::oauth_request {nick uhost hand chan argv} {
 }
 
 # Handle retrieval of OAuth access token
-# if success, $twitter::oauth_token and $twitter::oauth_token_secret stored
+# if success, we store $::twitlib::oauth_token and $::twitlib::oauth_token_secret
 proc twitter::oauth_access {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
@@ -107,18 +90,18 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 	}
 	lassign $args oauth_token oauth_token_secret pin
 
-	if {[catch {oauth::get_access_token $twitter::oauth_consumer_key $twitter::oauth_consumer_secret $oauth_token $oauth_token_secret $pin} data]} {
+	if {[catch {::oauth::get_access_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret $oauth_token $oauth_token_secret $pin} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
 
 	# reset stored state
-	set twitter::last_id 1
+	set ::twitlib::last_id 1
 	set twitter::last_update 1
 	set twitter::last_msg 1
 
-	set twitter::oauth_token [dict get $data oauth_token]
-	set twitter::oauth_token_secret [dict get $data oauth_token_secret]
+	set ::twitlib::oauth_token [dict get $data oauth_token]
+	set ::twitlib::oauth_token_secret [dict get $data oauth_token_secret]
 	set screen_name [dict get $data screen_name]
 	$twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
 }
@@ -187,9 +170,9 @@ proc twitter::retweet {nick uhost hand chan argv} {
 	}
 
 	# Setup url since id is not given as params for some reason...
-	set url "${twitter::retweet_url}${argv}.json"
+	set url "${::twitlib::retweet_url}${argv}.json"
 
-	if {[catch {twitter::query $url {} POST} result]} {
+	if {[catch {::twitlib::query $url {} POST} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Retweet failure. ($argv) (You can't retweet your own updates!)"
 		return
 	}
@@ -206,7 +189,7 @@ proc twitter::follow {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::follow_url [list screen_name $argv]} result]} {
+	if {[catch {::twitlib::query $::twitlib::follow_url [list screen_name $argv]} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Twitter failed or already friends with $argv!"
 		return
 	}
@@ -228,7 +211,7 @@ proc twitter::unfollow {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::unfollow_url [list screen_name $argv]} result]} {
+	if {[catch {::twitlib::query $::twitlib::unfollow_url [list screen_name $argv]} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Unfollow failed. ($argv)"
 		return
 	}
@@ -250,7 +233,7 @@ proc twitter::updates {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::home_url [list count $argv] GET} result]} {
+	if {[catch {::twitlib::query $::twitlib::home_url [list count $argv] GET} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Retrieval error: $result."
 		return
 	}
@@ -277,7 +260,7 @@ proc twitter::search {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::search_url [list q $argv]} data]} {
+	if {[catch {::twitlib::query $::twitlib::search_url [list q $argv]} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)"
 		return
 	}
@@ -306,7 +289,7 @@ proc twitter::search_users {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::search_users_url [list q $argv per_page 5] GET} data]} {
+	if {[catch {::twitlib::query $::twit::search_users_url [list q $argv per_page 5] GET} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)."
 		return
 	}
@@ -320,7 +303,7 @@ proc twitter::search_users {nick uhost hand chan argv} {
 proc twitter::followers {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
-	if {[catch {twitter::query $twitter::followers_url} result]} {
+	if {[catch {::twitlib::query $::twitlib::followers_url} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error fetching followers."
 	}
 
@@ -339,7 +322,7 @@ proc twitter::followers {nick uhost hand chan argv} {
 proc twitter::following {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
-	if {[catch {twitter::query $twitter::following_url} result]} {
+	if {[catch {::twitlib::query $::twitlib::following_url} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error fetching friends."
 		return
 	}
@@ -362,7 +345,7 @@ proc twitter::following {nick uhost hand chan argv} {
 proc twitter::trends_global {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
-	if {[catch {twitter::query $twitter::trends_place_url [list id 1] GET} result]} {
+	if {[catch {::twitlib::query $::twitlib::trends_place_url [list id 1] GET} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Trend fetch failed!"
 		return
 	}
@@ -396,7 +379,7 @@ proc twitter::msgs {nick uhost hand chan argv} {
 		set params [list since_id $twitter::last_msg]
 	}
 
-	if {[catch {twitter::query $twitter::msgs_url $params GET} result]} {
+	if {[catch {::twitlib::query $::twitlib::msgs_url $params GET} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Messages retrieval failed."
 		return
 	}
@@ -432,7 +415,7 @@ proc twitter::msg {nick uhost hand chan argv} {
 	set msg [lrange $argv 1 end]
 	set l [list screen_name $name text $msg]
 
-	if {[catch {twitter::query $twitter::msg_url $l} data]} {
+	if {[catch {::twitlib::query $::twitlib::msg_url $l} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Message to \002$name\002 failed ($data)! (Are they following you?)"
 	} else {
 		twitter::output $chan "Message sent."
@@ -448,7 +431,7 @@ proc twitter::tweet {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {twitter::query $twitter::status_url [list status $argv]} result]} {
+	if {[catch {::twitlib::query $::twitlib::status_url [list status $argv]} result]} {
 		$twitter::output_cmd "PRIVMSG $chan :Tweet failed! ($argv) Error: $result."
 		return
 	}
@@ -463,59 +446,27 @@ proc twitter::tweet {nick uhost hand chan argv} {
 	twitter::output $chan "Tweet sent."
 }
 
-# Grab unseen status updates
+# grab unseen status updates and output them to +twitter channels.
 proc twitter::update {min hour day month year} {
-	if {[catch {twitter::query $twitter::home_url [list since_id $twitter::last_id count $twitter::max_updates] GET} result]} {
-		putlog "Twitter is busy. (error: $result)"
+	if {[catch {::twitlib::get_unseen_updates $::twitter::max_updates} result]} {
+		putlog "Update retrieval failed: $result"
 		return
 	}
 
-	set result [lreverse $result]
-
-	foreach status $result {
-		dict with status {
-			foreach ch [channels] {
-				if {[channel get $ch twitter]} {
-					twitter::output_update $ch [dict get $user screen_name] $id $text
-				}
-			}
-			if {$id > $twitter::last_id} {
-				set twitter::last_id $id
+	foreach status $updates {
+		foreach ch [channels] {
+			if {[channel get $ch twitter]} {
+				twitter::output_update $ch [dict get $status screen_name] \
+					[dict get $status $id] [dict get $status $text]
 			}
 		}
 	}
 }
 
-# Twitter http query
-proc twitter::query {url {query_list {}} {http_method {}}} {
-	# Set http mode of query
-	if {$http_method eq "" && $query_list ne ""} {
-		set method POST
-	} elseif {$http_method eq "" && $query_list eq ""} {
-		set method GET
-	} else {
-		set method $http_method
-	}
-
-	if {$twitter::oauth_token == "" || $twitter::oauth_token_secret == ""} {
-		error "OAuth not initialised. Try !twit_request_token"
-	}
-
-	# workaround as twitter expects ?param=value as part of URL for GET queries
-	# that have params!
-	if {$method eq "GET" && $query_list ne ""} {
-		append url ?[http::formatQuery {*}$query_list]
-	}
-
-	set data [oauth::query_api $url $twitter::oauth_consumer_key $twitter::oauth_consumer_secret $method $twitter::oauth_token $twitter::oauth_token_secret $query_list]
-
-	return [json::json2dict $data]
-}
-
 # Get saved ids/state
 proc twitter::get_states {} {
 	if {[catch {open $twitter::state_file r} fid]} {
-		set twitter::last_id 1
+		set ::twitlib::last_id 1
 		set twitter::last_update 1
 		set twitter::last_msg 1
 		return
@@ -525,25 +476,25 @@ proc twitter::get_states {} {
 	set states [split $data \n]
 	close $fid
 
-	set twitter::last_id [lindex $states 0]
+	set ::twitlib::last_id [lindex $states 0]
 	set twitter::last_update [lindex $states 1]
 	set twitter::last_msg [lindex $states 2]
-	set twitter::oauth_token [lindex $states 3]
-	set twitter::oauth_token_secret [lindex $states 4]
-	set twitter::oauth_consumer_key [lindex $states 5]
-	set twitter::oauth_consumer_secret [lindex $states 6]
+	set ::twitlib::oauth_token [lindex $states 3]
+	set ::twitlib::oauth_token_secret [lindex $states 4]
+	set ::twitlib::oauth_consumer_key [lindex $states 5]
+	set ::twitlib::oauth_consumer_secret [lindex $states 6]
 }
 
 # Save states to file
 proc twitter::write_states {args} {
 	set fid [open $twitter::state_file w]
-	puts $fid $twitter::last_id
+	puts $fid $::twitlib::last_id
 	puts $fid $twitter::last_update
 	puts $fid $twitter::last_msg
-	puts $fid $twitter::oauth_token
-	puts $fid $twitter::oauth_token_secret
-	puts $fid $twitter::oauth_consumer_key
-	puts $fid $twitter::oauth_consumer_secret
+	puts $fid $::twitlib::oauth_token
+	puts $fid $::twitlib::oauth_token_secret
+	puts $fid $::twitlib::oauth_consumer_key
+	puts $fid $::twitlib::oauth_consumer_secret
 	close $fid
 }
 

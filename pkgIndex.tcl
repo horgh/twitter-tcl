@@ -9,3 +9,4 @@
 # full path name of this file's directory.
 
 package ifneeded oauth 0.1 [list source [file join $dir oauth.tcl]]
+package ifneeded twitlib 0.1 [list source [file join $dir twitlib.tcl]]
