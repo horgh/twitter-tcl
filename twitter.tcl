@@ -28,6 +28,10 @@ namespace eval twitter {
 
 	# you shouldn't need to change anything below this point.
 
+	# number of followers to output when listing followers.
+	# this request can return a maximum of 5000 at a time.
+	variable followers_limit 50
+
 	# holds state (id of last seen tweet, oauth keys)
 	variable state_file "scripts/twitter.state"
 
@@ -37,27 +41,32 @@ namespace eval twitter {
 	variable last_msg
 
 	# twitter binds.
-	bind pub	o|o "!twit" twitter::tweet
-	bind pub	o|o "!tweet" twitter::tweet
-	bind pub	o|o "!twit_msg" twitter::msg
-	bind pub	o|o "!twit_trends" twitter::trends_global
-	bind pub	o|o "!follow" twitter::follow
-	bind pub	o|o "!unfollow" twitter::unfollow
-	bind pub	o|o "!twit_updates" twitter::updates
-	bind pub	o|o "!twit_msgs" twitter::msgs
-	bind pub	o|o "!twit_search" twitter::search
-	bind pub	o|o "!twit_searchusers" twitter::search_users
-	bind pub	o|o "!followers" twitter::followers
-	bind pub	o|o "!following" twitter::following
-	bind pub	o|o "!retweet" twitter::retweet
-	bind pub	o|o "!update_interval" twitter::update_interval
+	bind pub	o|o "!twit"             ::twitter::tweet
+	bind pub	o|o "!tweet"            ::twitter::tweet
+	bind pub	o|o "!twit_msg"         ::twitter::msg
+	bind pub	o|o "!twit_trends"      ::twitter::trends_global
+	bind pub	o|o "!follow"           ::twitter::follow
+	bind pub	o|o "!unfollow"         ::twitter::unfollow
+	bind pub	o|o "!twit_updates"     ::twitter::updates
+	bind pub	o|o "!twit_msgs"        ::twitter::msgs
+	bind pub	o|o "!twit_search"      ::twitter::search
+	bind pub	o|o "!twit_searchusers" ::twitter::search_users
+
+	variable followers_trigger !followers
+	bind pub	o|o $followers_trigger  ::twitter::followers
+
+	variable following_trigger !following
+	bind pub	o|o $following_trigger  ::twitter::following
+
+	bind pub	o|o "!retweet"          ::twitter::retweet
+	bind pub	o|o "!update_interval"  ::twitter::update_interval
 
 	# oauth binds
-	bind pub	o|o "!twit_request_token" twitter::oauth_request
-	bind pub	o|o "!twit_access_token" twitter::oauth_access
+	bind pub	o|o "!twit_request_token" ::twitter::oauth_request
+	bind pub	o|o "!twit_access_token"  ::twitter::oauth_access
 
 	# save our state on save event.
-	bind evnt	-|- "save" twitter::write_states
+	bind evnt	-|- "save" ::twitter::write_states
 
 	# add channel flag +/-twitter
 	setudef flag twitter
@@ -153,7 +162,7 @@ proc twitter::update_interval {nick uhost hand chan argv} {
 }
 
 # Output decoded/split string to given channel
-proc twitter::output {chan str} {
+proc ::twitter::output {chan str} {
 	set str [htmlparse::mapEscapes $str]
 	set str [regsub -all -- {\n} $str " "]
 	$twitter::output_cmd "PRIVMSG $chan :$str"
@@ -308,42 +317,71 @@ proc twitter::search_users {nick uhost hand chan argv} {
 }
 
 # Return latest followers (up to 100)
-proc twitter::followers {nick uhost hand chan argv} {
+proc ::twitter::followers {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
-
-	if {[catch {::twitlib::query $::twitlib::followers_url} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Error fetching followers."
+	set args [split $argv " "]
+	if {[expr [llength $args] != 1]} {
+		::twitter::output $chan "Usage: $::twitter::followers_trigger <screen name>"
+		return
 	}
+	set screen_name [lindex $args 0]
 
-	# Make first followers -> last followers
-	set result [lreverse $result]
-
-	set followers []
-	foreach user $result {
-		append followers "[dict get $user screen_name] "
-	}
-
-	twitter::output $chan "Followers: $followers"
-}
-
-# Returns the latest users following acct is following (up to 100)
-proc twitter::following {nick uhost hand chan argv} {
-	if {![channel get $chan twitter]} { return }
-
-	if {[catch {::twitlib::query $::twitlib::following_url} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Error fetching friends."
+	set query_list [list screen_name $screen_name follows_count \
+		$::twitter::followers_limit]
+	if {[catch {::twitlib::query $::twitlib::followers_url $query_list GET} \
+		result]} {
+		::twitter::output $chan "Error fetching followers."
+		putlog "Error fetching followers: $result"
 		return
 	}
 
-	# Make first following -> last following
-	set result [lreverse $result]
+	# order to: first following -> last following
+	set users [lreverse [dict get $result users]]
 
-	set following []
-	foreach user $result {
-		append following "[dict get $user screen_name] "
+	set followers []
+	foreach user $users {
+		set screen_name [dict get $user screen_name]
+		append followers "$screen_name "
+	}
+	set followers [string trim $followers]
+
+	foreach line [::twitter::split_line 300 $followers] {
+		twitter::output $chan "Followers: $followers"
+	}
+}
+
+# Returns the latest users following acct is following (up to 100)
+proc ::twitter::following {nick uhost hand chan argv} {
+	if {![channel get $chan twitter]} { return }
+	set args [split $argv " "]
+	if {[expr [llength $args] != 1]} {
+		::twitter::output $chan "Usage: $::twitter::following_trigger <screen name>"
+		return
+	}
+	set screen_name [lindex $args 0]
+
+	set query_list [list screen_name $screen_name follows_count \
+		$::twitter::followers_limit]
+	if {[catch {::twitlib::query $::twitlib::following_url $query_list GET} \
+		result]} {
+		::twitter::output $chan "Error fetching friends."
+		putlog "Error fetching friends: $result"
+		return
 	}
 
-	twitter::output $chan "Following: $following"
+	# order to: first following -> last following
+	set users [lreverse [dict get $result users]]
+
+	set following ""
+	foreach user $users {
+		set screen_name [dict get $user screen_name]
+		append following "$screen_name "
+	}
+	set following [string trim $following]
+
+	foreach line [::twitter::split_line 300 $following] {
+		::twitter::output $chan "Following: $line"
+	}
 }
 
 # Get global trends

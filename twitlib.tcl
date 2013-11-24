@@ -36,8 +36,8 @@ namespace eval ::twitlib {
 	variable follow_url       https://api.twitter.com/1.1/friendships/create.json
 	variable unfollow_url     https://api.twitter.com/1.1/friendships/destroy.json
 	variable search_url       https://search.twitter.com/search.json
-	variable followers_url    https://api.twitter.com/1.1/statuses/followers.json
-	variable following_url    https://api.twitter.com/1.1/statuses/friends.json
+	variable followers_url    https://api.twitter.com/1.1/followers/list.json
+	variable following_url    https://api.twitter.com/1.1/friends/list.json
 	variable retweet_url      https://api.twitter.com/1.1/statuses/retweet/
 	variable search_users_url https://api.twitter.com/1.1/users/search.json
 }
