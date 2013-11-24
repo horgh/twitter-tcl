@@ -12,8 +12,13 @@ package require oauth
 package provide twitlib 0.1
 
 namespace eval ::twitlib {
-	# the last tweet id we have seen.
+	# maximum number of timeline tweets to fetch at one time.
+	variable max_updates 10
+
+	# the last tweet id we have seen - home timeline.
 	variable last_id 1
+	# last tweet id we have seen - mentions timeline.
+	variable last_mentions_id 1
 
 	# oauth authentication information.
 	variable oauth_consumer_key {}
@@ -24,6 +29,7 @@ namespace eval ::twitlib {
 	# Twitter API URLs
 	variable status_url       https://api.twitter.com/1.1/statuses/update.json
 	variable home_url         https://api.twitter.com/1.1/statuses/home_timeline.json
+	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
 	variable msg_url          https://api.twitter.com/1.1/direct_messages/new.json
 	variable msgs_url         https://api.twitter.com/1.1/direct_messages.json
 	variable trends_place_url https://api.twitter.com/1.1/trends/place.json
@@ -77,8 +83,6 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 
 # retrieve the latest unseen updates.
 #
-# max_updates is the maximum number of updates to retrieve.
-#
 # we return a list of dicts. each dict represents a single
 # unseen tweet, and has the keys:
 #   screen_name
@@ -87,9 +91,9 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 #
 # the tweets are ordered from oldest to newest.
 #
-# NOTE: we may raise an error if the request fails..
-proc ::twitlib::get_unseen_updates {max_updates} {
-	set params [list count $max_updates \
+# NOTE: we may raise an error if the request fails.
+proc ::twitlib::get_unseen_updates {} {
+	set params [list count $::twitlib::max_updates \
 		since_id $::twitlib::last_id]
 
 	# NOTE: this may raise an error.
@@ -113,6 +117,46 @@ proc ::twitlib::get_unseen_updates {max_updates} {
 
 		if {$id > $::twitlib::last_id} {
 			set ::twitlib::last_id $id
+		}
+	}
+	return $updates
+}
+
+# retrieve unseen mention timeline statuses
+#
+# we return a list of dicts. each dict represents a single
+# unseen tweet, and has the keys:
+#   screen_name
+#   id
+#   text
+#
+# the tweets are ordered from oldest to newest.
+#
+# NOTE: we may raise an error if the request fails.
+proc ::twitlib::get_unseen_mentions {} {
+	set params [list count $::twitlib::max_updates \
+		since_id $::twitlib::last_mentions_id]
+
+	set result [::twitlib::query $::twitlib::mentions_url $params GET]
+
+	# re-order - oldest to newest.
+	set result [lreverse $result]
+
+	set updates [list]
+	foreach status $result {
+		set screen_name [dict get $status user screen_name]
+		set id          [dict get $status id]
+		set text        [dict get $status text]
+
+		set d [dict create]
+		dict set d screen_name $screen_name
+		dict set d id $id
+		dict set d text $text
+
+		lappend updates $d
+
+		if {$id > $::twitlib::last_mentions_id} {
+			set ::twitlib::last_mentions_id $id
 		}
 	}
 	return $updates

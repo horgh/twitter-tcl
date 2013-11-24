@@ -66,7 +66,7 @@ proc ::get_updates {consumer_key consumer_secret token token_secret} {
 	set ::twitlib::oauth_token $token
 	set ::twitlib::oauth_token_secret $token_secret
 
-	set updates [::twitlib::get_unseen_updates 5]
+	set updates [::twitlib::get_unseen_updates]
 	foreach status $updates {
 		foreach key [dict keys $status] {
 			set val [dict get $status $key]

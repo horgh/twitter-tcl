@@ -142,7 +142,7 @@ proc ::twitter_poll::poll {} {
 	set ::twitlib::last_id [::twitter_poll::get_last_tweet_id $dbh]
 
 	# retrieve unseen tweets.
-	set updates [::twitlib::get_unseen_updates $::twitter_poll::max_tweets]
+	set updates [::twitlib::get_unseen_updates]
 
 	# add each unseen tweet into the database.
 	foreach status $updates {

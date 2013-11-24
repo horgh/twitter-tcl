@@ -12,14 +12,19 @@ package require twitlib
 namespace eval twitter {
 	# Check for tweets every 1, 5, or 10 min
 	# Must be 1, 5, or 10!
-	set update_time 10
-
-	# maximum number of tweets to fetch for display at one time
-	variable max_updates 10
+	variable update_time 10
 
 	# show tweet number (1 = on, 0 = off)
 	# This is only really relevant if you are going to !retweet
-	set show_tweetid 0
+	variable show_tweetid 0
+
+	# control what we poll. each of these poll types is a separate API
+	# request every 'update_time' interval, so if you don't need/want one, then
+	# it is more efficient to disable.
+	# whether to poll home timeline.
+	variable poll_home_timeline 0
+	# whether to poll mentions timeline.
+	variable poll_mentions_timeline 1
 
 	# you shouldn't need to change anything below this point.
 
@@ -97,8 +102,9 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 
 	# reset stored state
 	set ::twitlib::last_id 1
-	set twitter::last_update 1
-	set twitter::last_msg 1
+	set ::twitlib::last_mentions_id 1
+	set ::twitter::last_update 1
+	set ::twitter::last_msg 1
 
 	set ::twitlib::oauth_token [dict get $data oauth_token]
 	set ::twitlib::oauth_token_secret [dict get $data oauth_token_secret]
@@ -106,26 +112,28 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 	$twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
 }
 
-# Set update time
+# set the update time by recreating the time bind.
 proc twitter::set_update_time {delay} {
 	if {$delay != 1 && $delay != 10 && $delay != 5} {
 		set delay 10
 	}
 
-	twitter::flush_update_binds
+	::twitter::flush_update_binds
 
 	if {$delay == 1} {
-		bind time - "* * * * *" twitter::update
+		bind time - "* * * * *" ::twitter::update
 	} else {
-		bind time - "*/$delay * * * *" twitter::update
+		bind time - "*/$delay * * * *" ::twitter::update
 	}
 }
 
-# Flush update binds
-proc twitter::flush_update_binds {} {
+# remove our time bind.
+proc ::twitter::flush_update_binds {} {
 	foreach binding [binds time] {
-		if {[lindex $binding 4] == "twitter::update"} {
-			unbind [lindex $binding 0] [lindex $binding 1] [lindex $binding 2] [lindex $binding 4]
+		if {[lindex $binding 4] == "twitter::update" \
+			|| [lindex $binding 4] == "::twitter::update"} {
+			unbind [lindex $binding 0] [lindex $binding 1] [lindex $binding 2] \
+				[lindex $binding 4]
 		}
 	}
 }
@@ -154,7 +162,7 @@ proc twitter::output {chan str} {
 # Format status updates and output
 proc twitter::output_update {chan name id str} {
 	set out "\002$name\002: $str"
-	if {$twitter::show_tweetid} {
+	if {$::twitter::show_tweetid} {
 		append out " ($id)"
 	}
 	twitter::output $chan $out
@@ -446,20 +454,37 @@ proc twitter::tweet {nick uhost hand chan argv} {
 	twitter::output $chan "Tweet sent."
 }
 
-# grab unseen status updates and output them to +twitter channels.
-proc twitter::update {min hour day month year} {
-	if {[catch {::twitlib::get_unseen_updates $::twitter::max_updates} result]} {
-		putlog "Update retrieval failed: $result"
-		return
-	}
-
+# send timeline updates to all +twitter channels.
+proc ::twitter::output_updates {updates} {
 	foreach status $updates {
 		foreach ch [channels] {
-			if {[channel get $ch twitter]} {
-				twitter::output_update $ch [dict get $status screen_name] \
-					[dict get $status $id] [dict get $status $text]
+			if {![channel get $ch twitter]} {
+				continue
 			}
+			::twitter::output_update $ch [dict get $status screen_name] \
+				[dict get $status id] [dict get $status text]
 		}
+	}
+}
+
+# grab unseen status updates and output them to +twitter channels.
+proc ::twitter::update {min hour day month year} {
+	# home timeline updates.
+	if {$::twitter::poll_home_timeline} {
+		if {[catch {::twitlib::get_unseen_updates} updates]} {
+			putlog "Update retrieval (home) failed: $updates"
+			return
+		}
+		::twitter::output_updates $updates
+	}
+
+	# mentions timeline updates.
+	if {$::twitter::poll_mentions_timeline} {
+		if {[catch {::twitlib::get_unseen_mentions} updates]} {
+			putlog "Update retrieval (mentions) failed: $updates"
+			return
+		}
+		::twitter::output_updates $updates
 	}
 }
 
@@ -467,8 +492,9 @@ proc twitter::update {min hour day month year} {
 proc twitter::get_states {} {
 	if {[catch {open $twitter::state_file r} fid]} {
 		set ::twitlib::last_id 1
-		set twitter::last_update 1
-		set twitter::last_msg 1
+		set ::twitter::last_update 1
+		set ::twitter::last_msg 1
+		set ::twitlib::last_mentions_id 1
 		return
 	}
 
@@ -477,12 +503,17 @@ proc twitter::get_states {} {
 	close $fid
 
 	set ::twitlib::last_id [lindex $states 0]
-	set twitter::last_update [lindex $states 1]
-	set twitter::last_msg [lindex $states 2]
+	set ::twitter::last_update [lindex $states 1]
+	set ::twitter::last_msg [lindex $states 2]
 	set ::twitlib::oauth_token [lindex $states 3]
 	set ::twitlib::oauth_token_secret [lindex $states 4]
 	set ::twitlib::oauth_consumer_key [lindex $states 5]
 	set ::twitlib::oauth_consumer_secret [lindex $states 6]
+
+	set ::twitlib::last_mentions_id 1
+	if {[llength $states] >= 8} {
+		set ::twitlib::last_mentions_id [lindex $states 7]
+	}
 }
 
 # Save states to file
@@ -495,6 +526,7 @@ proc twitter::write_states {args} {
 	puts $fid $::twitlib::oauth_token_secret
 	puts $fid $::twitlib::oauth_consumer_key
 	puts $fid $::twitlib::oauth_consumer_secret
+	puts $fid $::twitlib::last_mentions_id
 	close $fid
 }
 
@@ -521,9 +553,7 @@ proc twitter::split_line {max str} {
 	return $lines
 }
 
-# Read states on load
-twitter::get_states
-
-twitter::set_update_time $twitter::update_time
+::twitter::get_states
+::twitter::set_update_time $::twitter::update_time
 
 putlog "twitter.tcl (c) fedex and horgh"
