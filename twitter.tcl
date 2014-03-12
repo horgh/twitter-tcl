@@ -277,7 +277,7 @@ proc twitter::search {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {::twitlib::query $::twitlib::search_url [list q $argv]} data]} {
+	if {[catch {::twitlib::query $::twitlib::search_url [list q $argv count 4] GET} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)"
 		return
 	}
@@ -287,13 +287,10 @@ proc twitter::search {nick uhost hand chan argv} {
 		return
 	}
 
-	set results [dict get $data results]
+	set statuses [dict get $data statuses]
 	set count 0
-	foreach result $results {
-		twitter::output $chan "#[incr count] \002[dict get $result from_user]\002 [dict get $result text]"
-		if {$count > 4} {
-			break
-		}
+	foreach status $statuses {
+		twitter::output $chan "#[incr count] [dict get $status text]"
 	}
 }
 
@@ -306,7 +303,7 @@ proc twitter::search_users {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {::twitlib::query $::twit::search_users_url [list q $argv per_page 5] GET} data]} {
+	if {[catch {::twitlib::query $::twitlib::search_users_url [list q $argv per_page 5] GET} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)."
 		return
 	}
