@@ -88,6 +88,7 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 #   screen_name
 #   id
 #   text
+#   created_at (time tweet created)
 #
 # the tweets are ordered from oldest to newest.
 #
@@ -106,12 +107,14 @@ proc ::twitlib::get_unseen_updates {} {
 	foreach status $result {
 		set screen_name [dict get $status user screen_name]
 		set id          [dict get $status id]
+		set created_at  [dict get $status created_at]
 		set text        [dict get $status text]
 
 		set d [dict create]
 		dict set d screen_name $screen_name
 		dict set d id $id
 		dict set d text $text
+		dict set d created_at $created_at
 
 		lappend updates $d
 

@@ -117,15 +117,16 @@ proc ::twitter_poll::get_last_tweet_id {dbh} {
 proc ::twitter_poll::store_update {dbh status} {
 	set sql {\
 		INSERT INTO tweet \
-		(nick, text, tweet_id) \
-		SELECT $1, $2, $3 \
+		(nick, text, tweet_id, time) \
+		SELECT $1, $2, $3, $4 \
 		WHERE NOT EXISTS \
-			(SELECT NULL FROM tweet WHERE tweet_id = $4) \
+			(SELECT NULL FROM tweet WHERE tweet_id = $5) \
 		}
 	::pg::sqlexec $dbh $sql \
 		[dict get $status screen_name] \
 		[dict get $status text] \
 		[dict get $status id] \
+		[dict get $status created_at] \
 		[dict get $status id]
 
 	if {$::twitter_poll::verbose} {
