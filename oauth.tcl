@@ -105,7 +105,6 @@ proc oauth::query_call {url consumer_key consumer_secret method params {sign_par
 proc oauth::query {url method oauth_header {query {}}} {
 	set header [list Authorization [concat "OAuth" $oauth_header]]
 
-	puts "getting url $url"
 	if {$method != "GET"} {
 		set token [http::geturl $url -headers $header -query $query -method $method -timeout $oauth::timeout]
 	} else {
