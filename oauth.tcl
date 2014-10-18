@@ -12,7 +12,7 @@ package require tls
 package provide oauth 0.1
 
 # only enable TLSv1
-http::register https 443 [list ::tls::socket -ssl2 0 -ssl3 0 -tls1 1]
+::http::register https 443 [list ::tls::socket -ssl2 0 -ssl3 0 -tls1 1]
 
 namespace eval oauth {
 	variable request_token_url https://api.twitter.com/oauth/request_token
