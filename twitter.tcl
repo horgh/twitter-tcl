@@ -122,18 +122,23 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 }
 
 # set the update time by recreating the time bind.
-proc twitter::set_update_time {delay} {
+proc ::twitter::set_update_time {delay} {
 	if {$delay != 1 && $delay != 10 && $delay != 5} {
 		set delay 10
 	}
-
 	::twitter::flush_update_binds
-
 	if {$delay == 1} {
 		bind time - "* * * * *" ::twitter::update
-	} else {
-		bind time - "*/$delay * * * *" ::twitter::update
+		return
 	}
+	# NOTE: */x cron syntax is not supported by eggdrop.
+	if {$delay == 5} {
+		bind time - "?0 * * * *" ::twitter::update
+		bind time - "?5 * * * *" ::twitter::update
+		return
+	}
+	# 10
+	bind time - "?0 * * * *" ::twitter::update
 }
 
 # remove our time bind.
