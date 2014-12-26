@@ -13,6 +13,7 @@ package provide twitlib 0.1
 
 namespace eval ::twitlib {
 	# maximum number of timeline tweets to fetch at one time.
+	# for home_url the current maximum is 200.
 	variable max_updates 10
 
 	# the last tweet id we have seen - home timeline.
@@ -27,7 +28,9 @@ namespace eval ::twitlib {
 	variable oauth_token_secret {}
 
 	# Twitter API URLs
+	# POST status_url to create a tweet.
 	variable status_url       https://api.twitter.com/1.1/statuses/update.json
+	# GET home_url to retrieve tweets by users you follow/yourself.
 	variable home_url         https://api.twitter.com/1.1/statuses/home_timeline.json
 	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
 	variable msg_url          https://api.twitter.com/1.1/direct_messages/new.json

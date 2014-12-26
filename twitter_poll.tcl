@@ -13,9 +13,6 @@ package require Pgtcl
 package require twitlib
 
 namespace eval ::twitter_poll {
-	# number of tweets to retrieve in a poll at a time (maximum)
-	variable max_tweets 50
-
 	# database connection variables.
 	variable db_name {}
 	variable db_host 0
@@ -88,6 +85,7 @@ proc ::twitter_poll::setup {} {
 	set ::twitter_poll::db_user [dict get $values db_user]
 	set ::twitter_poll::db_pass [dict get $values db_pass]
 
+	set ::twitlib::max_updates [dict get $values max_tweets_at_once]
 	set ::twitter_poll::verbose [dict get $values verbose]
 }
 

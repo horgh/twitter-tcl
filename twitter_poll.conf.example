@@ -8,3 +8,6 @@ db_port = 5432
 db_user = twitreader
 db_pass =
 verbose = 0
+# how many tweets we will retrieve when retrieving unseen updates.
+# API maximum is 200.
+max_tweets_at_once = 200
