@@ -111,8 +111,10 @@ proc ::twitlib::fix_status {status} {
 
 	# we can also apparently have newlines in tweets. replace them
 	# with a space.
+	# also drop zero width spaces that we would not want to display
+	# anyway. (\u200b)
 	# TODO: we could replace 2+ whitespace in a row with a single space.
-	set tweet_no_newlines [string map {\n " " \r ""} $tweet]
+	set tweet_no_newlines [string map {\n " " \r "" \u200b ""} $tweet]
 	if {$tweet_no_newlines != $tweet} {
 		set changed 1
 		set tweet $tweet_no_newlines
