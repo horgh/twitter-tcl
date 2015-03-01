@@ -81,6 +81,7 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 		$::twitlib::oauth_consumer_secret $method $::twitlib::oauth_token \
 		$::twitlib::oauth_token_secret $query_list]
 
+	# apparently we'll get back unicode
 	return [::json::json2dict $data]
 }
 
@@ -95,6 +96,9 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 # a retweet).
 #
 # as well we replace newlines with a single space.
+#
+# we also strip out non unicode characters as it seems we can
+# get invalid ones.
 proc ::twitlib::fix_status {status} {
 	set changed 0
 	set tweet [dict get $status text]
@@ -118,6 +122,38 @@ proc ::twitlib::fix_status {status} {
 	if {$tweet_no_newlines != $tweet} {
 		set changed 1
 		set tweet $tweet_no_newlines
+	}
+
+	# tweet json unicode characters come through as, for example, \u201c.
+	# however we can still receive invalid unicode after converting from
+	# json. for example:
+	# ERROR:  invalid byte sequence for encoding "UTF8": 0xeda0bd
+	# which in the tweet with this problem showed as a "clapping hands"
+	# image. in the tweet: \ud83d\udc4f
+	# which is "undefined u+eda0bd"?
+	# on unicode.org looking up this hex code results in:
+	# "Error: U+EDA0BD is outside the legal range of codepoints.
+	# The legal range of codepoints is U+0000 through U+10FFFF."
+	#                                                 U+EDA0BD
+	# so to get around this I've tried stripping with regex and string maps:
+	#set tweet [regsub -all -- {[\U00110000-\Uffffffff]} $tweet ""]
+	# (this one because it seems tcl would replace invalid unicode with
+	# \ufffd in some cases?)
+	#set tweet [string map {\ufffd ""} $tweet]
+	# neither worked. instead, checking with 'string is' seems to do
+	# the tric.
+	set tweet_filtered_chars ""
+	for {set i 0} {$i < [string length $tweet]} {incr i} {
+		set char [string index $tweet $i]
+		# any unicode printing char including space.
+		if {![string is print -strict $char]} {
+			continue
+		}
+		append tweet_filtered_chars $char
+	}
+	if {$tweet_filtered_chars != $tweet} {
+		set changed 1
+		set tweet $tweet_filtered_chars
 	}
 
 	if {$changed} {

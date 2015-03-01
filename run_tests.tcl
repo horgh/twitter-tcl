@@ -19,9 +19,6 @@ proc ::get_test_statuses {json_file} {
 	set statuses [::json::json2dict $data]
 
 	set fixed_statuses [::twitlib::fix_statuses $statuses]
-	if {$fixed_statuses == ""} {
-		return 0
-	}
 	foreach status $fixed_statuses {
 		set tweet [dict get $status text]
 		puts "Tweet: $tweet"

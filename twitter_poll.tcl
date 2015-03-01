@@ -125,12 +125,6 @@ proc ::twitter_poll::get_last_tweet_id {dbh} {
 # status is a dict with keys: id, screen_name, text.
 # it represents a single tweet.
 proc ::twitter_poll::store_update {dbh status} {
-	# apparently we need to convert explicitly or we can end
-	# up with encoding problems. invalid utf-8 attempting
-	# to be set in postgres.
-	set tweet [dict get $status text]
-	set tweet [encoding convertfrom utf-8 $tweet]
-
 	set sql {\
 		INSERT INTO tweet \
 		(nick, text, tweet_id, time) \
@@ -142,6 +136,7 @@ proc ::twitter_poll::store_update {dbh status} {
 	# we get back a result handle that can be used to get
 	# at other data.
 	# it may be used to clean up too.
+	set tweet [dict get $status text]
 	set result [::pg::sqlexec $dbh $sql \
 		[dict get $status screen_name] \
 		$tweet \
@@ -154,6 +149,7 @@ proc ::twitter_poll::store_update {dbh status} {
 	}
 	if {$result_status != "PGRES_COMMAND_OK"} {
 		set err [::pg::result $result -error]
+		puts "Failed to insert tweet: $tweet"
 		puts "Error executing INSERT: $err"
 		::pg::result $result -clear
 		return 0
