@@ -102,17 +102,35 @@ proc ::twitter_poll::get_db_handle {} {
 }
 
 proc ::twitter_poll::get_last_tweet_id {dbh} {
-	set sql "SELECT COALESCE(MAX(tweet_id), 1) AS id FROM tweet"
-	set id 1
+	# TODO: hmm, I think tweets are not guaranteed to always
+	#   be increasing.
+	#   but then why does the since_id parameter in the API exist?
+	#   presumably it must be correct then.
+
+	# take my internal id column so we can be sure it's the last
+	# tweet received. I'm not sure max tweet id is valid due to
+	# how the numbering works
+	set sql "SELECT tweet_id FROM tweet ORDER BY id DESC LIMIT 1"
+	set tweet_id 1
 	::pg::select $dbh $sql array {
-		set id $array(id)
+		set tweet_id $array(tweet_id)
 	}
-	return $id
+	if {$::twitter_poll::verbose} {
+		puts "Latest tweet ID seen: $tweet_id"
+	}
+	# NOTE: apparently select proc cleans up for us.
+	return $tweet_id
 }
 
 # status is a dict with keys: id, screen_name, text.
 # it represents a single tweet.
 proc ::twitter_poll::store_update {dbh status} {
+	# apparently we need to convert explicitly or we can end
+	# up with encoding problems. invalid utf-8 attempting
+	# to be set in postgres.
+	set tweet [dict get $status text]
+	set tweet [encoding convertfrom utf-8 $tweet]
+
 	set sql {\
 		INSERT INTO tweet \
 		(nick, text, tweet_id, time) \
@@ -120,16 +138,32 @@ proc ::twitter_poll::store_update {dbh status} {
 		WHERE NOT EXISTS \
 			(SELECT NULL FROM tweet WHERE tweet_id = $5) \
 		}
-	::pg::sqlexec $dbh $sql \
+
+	# we get back a result handle that can be used to get
+	# at other data.
+	# it may be used to clean up too.
+	set result [::pg::sqlexec $dbh $sql \
 		[dict get $status screen_name] \
-		[dict get $status text] \
+		$tweet \
 		[dict get $status id] \
 		[dict get $status created_at] \
-		[dict get $status id]
-
+		[dict get $status id]]
+	set result_status [::pg::result $result -status]
 	if {$::twitter_poll::verbose} {
-		puts "Stored status: $status"
+		puts "Result status: $result_status"
 	}
+	if {$result_status != "PGRES_COMMAND_OK"} {
+		set err [::pg::result $result -error]
+		puts "Error executing INSERT: $err"
+		::pg::result $result -clear
+		return 0
+	}
+	# clean up.
+	::pg::result $result -clear
+	if {$::twitter_poll::verbose} {
+		puts "Stored tweet: $tweet"
+	}
+	return 1
 }
 
 proc ::twitter_poll::poll {} {
@@ -138,25 +172,42 @@ proc ::twitter_poll::poll {} {
 
 	# find the last tweet id we have recorded. we use this as the
 	# last seen tweet id.
+	if {$::twitter_poll::verbose} {
+		puts "Determining latest tweet ID..."
+	}
 	set ::twitlib::last_id [::twitter_poll::get_last_tweet_id $dbh]
 
 	# retrieve unseen tweets.
+	if {$::twitter_poll::verbose} {
+		puts "Fetching updates..."
+	}
 	set updates [::twitlib::get_unseen_updates]
+	if {$::twitter_poll::verbose} {
+		puts "Updated received! Storing..."
+	}
 
 	# add each unseen tweet into the database.
 	foreach status $updates {
-		::twitter_poll::store_update $dbh $status
+		if {![::twitter_poll::store_update $dbh $status]} {
+			::pg::disconnect $dbh
+			return 0
+		}
 	}
 	if {$::twitter_poll::verbose} {
 		set count [llength $updates]
 		puts "Retrieved $count update(s)."
 	}
+	::pg::disconnect $dbh
+	return 1
 }
 
 # program entry.
 proc ::twitter_poll::main {} {
 	::twitter_poll::setup
-	::twitter_poll::poll
+	if {![::twitter_poll::poll]} {
+		exit 1
+	}
+	exit 0
 }
 
 ::twitter_poll::main
