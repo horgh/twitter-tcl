@@ -65,6 +65,9 @@ proc ::get_updates {consumer_key consumer_secret token token_secret} {
 	set ::twitlib::oauth_consumer_secret $consumer_secret
 	set ::twitlib::oauth_token $token
 	set ::twitlib::oauth_token_secret $token_secret
+	# for testing it can be useful to set these
+	#set ::twitlib::last_id 618247780138676226
+	#set ::twitlib::max_updates 200
 
 	set updates [::twitlib::get_unseen_updates]
 	foreach status $updates {

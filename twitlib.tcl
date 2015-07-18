@@ -185,6 +185,21 @@ proc ::twitlib::fix_statuses {statuses} {
 # the tweets are ordered from oldest to newest.
 #
 # NOTE: we may raise an error if the request fails.
+#
+# NOTE: it is still possible to miss old tweets using since_id.
+#   this is for two reasons:
+#   - twitter has a limit on the maximum age of a tweet it will
+#     return. if you try to ask for since_id '1' then this will
+#     be translated into the oldest tweet available. I'm not
+#     sure how far back tweets are available
+#   - since_id and count alone will return the most recent
+#     count tweets tweets newer than since_id, so there can be
+#     a gap between since_id and the tweets you get back.
+#     to resolve this we must use the 'max_id' parameter to
+#     page back. together with since_id and max_id we can
+#     make another request using the oldest tweet_id in the
+#     first request to get another 'page' of results.
+#     note I do not implement this here.
 proc ::twitlib::get_unseen_updates {} {
 	set params [list count $::twitlib::max_updates \
 		since_id $::twitlib::last_id]
