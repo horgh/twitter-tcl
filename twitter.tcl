@@ -322,7 +322,7 @@ proc twitter::search_users {nick uhost hand chan argv} {
 proc ::twitter::followers {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 	set args [split $argv " "]
-	if {[expr [llength $args] != 1]} {
+	if {[llength $args] != 1} {
 		::twitter::output $chan "Usage: $::twitter::followers_trigger <screen name>"
 		return
 	}
@@ -356,7 +356,7 @@ proc ::twitter::followers {nick uhost hand chan argv} {
 proc ::twitter::following {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 	set args [split $argv " "]
-	if {[expr [llength $args] != 1]} {
+	if {[llength $args] != 1} {
 		::twitter::output $chan "Usage: $::twitter::following_trigger <screen name>"
 		return
 	}
