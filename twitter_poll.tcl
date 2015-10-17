@@ -62,8 +62,8 @@ proc ::twitter_poll::setup {} {
 		set key [string trim $key]
 		set val [string trim $val]
 
-		if {[expr [string length $key] == 0] \
-			|| [expr [string length $val] == 0]} {
+		if {[string length $key] == 0 \
+			|| [string length $val] == 0} {
 			continue
 		}
 		dict set values $key $val

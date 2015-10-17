@@ -88,7 +88,7 @@ proc ::main {} {
 	global argc
 	global argv
 
-	if {[expr $argc == 0]} {
+	if {$argc == 0} {
 		::usage
 		exit 1
 	}

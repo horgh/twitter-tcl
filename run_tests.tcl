@@ -43,7 +43,7 @@ proc ::get_args {} {
 proc ::main {} {
 	set json_file [::get_args]
 	if {![::get_test_statuses $json_file]} {
-	return 0
+		return 0
 	}
 	return 1
 }
