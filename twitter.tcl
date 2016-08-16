@@ -1,5 +1,5 @@
 #
-# A twitter client/gateway for IRC.
+# A Twitter client/gateway for IRC.
 #
 # By fedex and horgh.
 #
@@ -12,27 +12,34 @@ package require twitlib
 namespace eval twitter {
 	# Check for tweets every 1, 5, or 10 min
 	# Must be 1, 5, or 10!
+	# Using 1 minute may put you up against Twitter's API limits if you have both
+	# home and mentions polling enabled.
 	variable update_time 10
 
-	# show tweet number (1 = on, 0 = off)
+	# Show tweet number (1 = on, 0 = off)
 	# This is only really relevant if you are going to !retweet
 	variable show_tweetid 0
 
-	# control what we poll. each of these poll types is a separate API
-	# request every 'update_time' interval, so if you don't need/want one, then
-	# it is more efficient to disable.
-	# whether to poll home timeline.
-	variable poll_home_timeline 0
-	# whether to poll mentions timeline.
-	variable poll_mentions_timeline 1
+	# Control what we poll. Each of these poll types is a separate API request
+	# every 'update_time' interval, so if you don't need/want one, then it is
+	# more efficient to disable.
+	# By default we poll only the home timeline. This means you will see tweets of
+	# users you follow.
 
-	# you shouldn't need to change anything below this point.
+	# Whether to poll home timeline.
+	variable poll_home_timeline 1
+	# Whether to poll mentions timeline.
+	variable poll_mentions_timeline 0
 
-	# number of followers to output when listing followers.
-	# this request can return a maximum of 5000 at a time.
+	#
+	# You shouldn't need to change anything below this point!
+	#
+
+	# Number of followers to output when listing followers.
+	# This request can return a maximum of 5000 at a time.
 	variable followers_limit 50
 
-	# holds state (id of last seen tweet, oauth keys)
+	# This file holds state information (id of last seen tweet, oauth keys).
 	variable state_file "scripts/twitter.state"
 
 	variable output_cmd putserv
@@ -40,7 +47,7 @@ namespace eval twitter {
 	variable last_update
 	variable last_msg
 
-	# twitter binds.
+	# Twitter binds.
 	bind pub	o|o "!twit"             ::twitter::tweet
 	bind pub	o|o "!tweet"            ::twitter::tweet
 	bind pub	o|o "!twit_msg"         ::twitter::msg
@@ -61,14 +68,14 @@ namespace eval twitter {
 	bind pub	o|o "!retweet"          ::twitter::retweet
 	bind pub	o|o "!update_interval"  ::twitter::update_interval
 
-	# oauth binds
+	# OAuth binds
 	bind pub	o|o "!twit_request_token" ::twitter::oauth_request
 	bind pub	o|o "!twit_access_token"  ::twitter::oauth_access
 
-	# save our state on save event.
+	# Save our state on save event.
 	bind evnt	-|- "save" ::twitter::write_states
 
-	# add channel flag +/-twitter
+	# Add channel flag +/-twitter
 	setudef flag twitter
 }
 

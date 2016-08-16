@@ -1,9 +1,8 @@
 #
 # Twitter API call library
 #
-# This is intended to abstract out Twitter API request logic
-# from twitter.tcl so that it may be used in more than the eggdrop
-# script.
+# This is intended to abstract out Twitter API request logic from twitter.tcl
+# so that it may be used in more than the eggdrop script.
 #
 
 package require json
@@ -12,16 +11,17 @@ package require oauth
 package provide twitlib 0.1
 
 namespace eval ::twitlib {
-	# maximum number of timeline tweets to fetch at one time.
-	# for home_url the current maximum is 200.
+	# Maximum number of timeline tweets to fetch at one time.
+	# For home_url the current maximum is 200.
 	variable max_updates 10
 
-	# the last tweet id we have seen - home timeline.
+	# The last tweet id we have seen - home timeline.
 	variable last_id 1
-	# last tweet id we have seen - mentions timeline.
+
+	# Last tweet id we have seen - mentions timeline.
 	variable last_mentions_id 1
 
-	# oauth authentication information.
+	# OAuth authentication information.
 	variable oauth_consumer_key {}
 	variable oauth_consumer_secret {}
 	variable oauth_token {}
