@@ -1,4 +1,4 @@
-#!/usr/bin/env tclsh8.6
+#!/usr/bin/env tclsh
 #
 # Program to run some automated tests
 #
@@ -38,23 +38,22 @@ proc ::get_args {} {
 # loads required packages.
 #
 # I do this in a procedure rather than globally so I can dynamically adjust
-# the auto_path. In particular I want to load libraries from the script's
-# directory.
+# the auto_path.
 proc ::include_libraries {} {
 	global auto_path
 
-	# The directory the script is in.
+	# Find the directory the script is in.
 	set script_path [info script]
 	set script_dir [file dirname $script_path]
 
-	# The directory above the script's directory.
-	set script_parent_dir [file dirname $script_dir]
-	if {$script_parent_dir != $script_dir} {
-		set auto_path [linsert $auto_path 0 $script_parent_dir]
+	# Libraries we want are in the parent directory.
+	if {[file pathtype $script_dir] == "absolute"} {
+		set parent [file dirname $script_dir]
+		set auto_path [linsert $auto_path 0 $parent]
+	} else {
+		set parent [file join $script_dir ".."]
+		set auto_path [linsert $auto_path 0 $parent]
 	}
-
-	set auto_path [linsert $auto_path 0 $script_dir]
-	set auto_path [linsert $auto_path 0 [pwd]]
 
 	package require json
 	package require twitlib
