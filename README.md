@@ -2,46 +2,48 @@
 
 Twitter libraries and client scripts in Tcl.
 
- * oauth.tcl - A library to authenticate with Twitter OAuth.
+The original purpose of these scripts was to provide an
+[Eggdrop](http://www.eggheads.org) script to show tweets on IRC channels. The
+repository includes libraries to assist with this and other related tools.
 
- * twitter.tcl - An eggdrop IRC bot client/gateway script. Running this on
-   a bot will output Twitter home timeline statuses to IRC channels, and
-   allow various other Twitter requests, such as sending tweets, and
-   following or unfollowing.
+The libraries/tools in this repository are:
 
- * `twitter_poll.tcl` - A script that polls a home timeline for tweets and
-   inserts them into a postgres database.
-
- * `test_oauth.tcl` - A script to test authentication with OAuth.
-   This can also be used to build the tokens/keys needed for OAuth.
+   * oauth.tcl - A library to integrate with Twitter's OAuth.
+   * twitlib.tcl - Twitter API client library.
+   * twitter.tcl - An Eggdrop IRC bot client/gateway script. Running this on a
+     bot will output Twitter home timeline statuses to IRC channels. You can
+     also do things like tweet from IRC and follow/unfollow users.
+   * `twitter_poll` - A script that polls a Twitter home timeline for tweets
+     and inserts them into a [PostgreSQL](https://www.postgresql.org) database.
+   * `test_oauth.tcl` - A script to test authentication with OAuth. This can
+     also be used to build the tokens/keys needed for OAuth.
 
 
 # Requirements
 
- * tcllib (unknown minimum version)
-
- * Tcl (unknown minimum version. Tested with 8.5 and 8.6.)
-
- * twitter.tcl depends on oauth.tcl and twitlib.tcl.
+ * tcllib
+ * Tcl (8.5+)
+ * `twitter_poll` depends on Pgtcl
 
 
 # twitter.tcl Usage information
 
 ## Usage notes
 
+  - Depends on oauth.tcl and twitlib.tcl.
   - We store state in the value of the variable `$state_file` file in the
     eggdrop root directory
-  - The default time between tweet fetches is 10 minutes.
-    You can alter the "bind time" option below to change to a different setting.
-    Note you may not be able to use the 1 minute option if you are polling both
-    the home and the mentions timeline as this can exceed Twitter's API limits.
+  - The default time between tweet fetches is 10 minutes. You can alter the
+    "bind time" option below to change to a different setting. Note you may not
+    be able to use the 1 minute option if you are polling both the home and the
+    mentions timeline as this can exceed Twitter's API limits.
   - Requires +o on the bot to issue !commands. This is different from having
     operator status in the channel. It means you must be recognized as a user
     with +o permission by the bot in its user records. If the bot does not
     respond to any of the commands in a channel set +twitter, then the bot may
     not recognize you.
-  - You can set multiple channels that the bot outputs and accepts
-    commands on by setting each channel `.chanset #channel +twitter`
+  - You can set multiple channels that the bot outputs and accepts commands on
+    by setting each channel `.chanset #channel +twitter`
 
 
 ## Setup
@@ -79,6 +81,7 @@ Twitter libraries and client scripts in Tcl.
   * No status updates show.
     * Ensure that `poll_home_timeline` at the top of twitter.tcl is set 1.
 
+
 ## Authentication notes
 
   - To begin authentication on an account use `!twit_request_token`.
@@ -110,21 +113,21 @@ the canonical list.
   - `!update_interval`
 
 
-### IRC OAuth commands
+## IRC OAuth commands
 
   * `!twit_request_token <consumer_key> <consumer_secret>`
   * `!twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>`
 
 
-## oauth.tcl Usage information
+# oauth.tcl Usage information
 
-### Setup for users
+## Setup for users
 
   - Register for consumer key/secret at
    [http://twitter.com/oauth\_clients](http://twitter.com/oauth_clients).
 
 
-### Library usage
+## Library usage
 
   - You can store `oauth_token` / `oauth_token_secret` from
     `::oauth::get_access_token` and use them indefinitely.
