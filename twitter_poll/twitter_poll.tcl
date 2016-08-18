@@ -1,9 +1,9 @@
-#!/usr/bin/env tclsh8.5
+#!/usr/bin/env tclsh8.6
 #
 # Twitter tweet poller.
 #
-# This script polls latest unseen home statuses from twitter and inserts
-# them into a postgres database.
+# This script polls latest unseen home statuses from twitter and inserts them
+# into a postgres database.
 #
 
 # TODO: script directory instead of pwd?
