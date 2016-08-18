@@ -53,20 +53,20 @@ The libraries/tools in this repository are:
     latter depends on. Like other eggdrop scripts, you can place them in a
     scripts subdirectory, and source them as usual in your eggdrop configuration
     file.
-  - Register for a consumer key/secret at
-   [http://twitter.com/oauth\_clients](http://twitter.com/oauth_clients) which
-   will be needed to authenticate with oauth (and `!twit_request_token`)
+  - Register for a consumer key/secret at [https://apps.twitter.com](https://apps.twitter.com)
+    by creating an application. This is used for authentication.
+  - Find your consumer key (API key) and consumer secret (API secret) for the
+    application you registered. At the time of writing, this is under the Keys
+    and Access Tokens tab for your application.
   - `.chanset #channel +twitter` to provide access to !commands in #channel.
     These channels also receive status update output. You issue this command in
     the eggdrop's partyline which you can reach either through telnet or DCC
     chat. How you get on to this depends on your configuration.
-  - Trying any command should prompt you to begin oauth authentication, or just
-    try `!twit_request_token` if not. You will be given instructions on what to
-    do after (calling `!twit_access_token`, etc). The bot should respond to you
-    in the channel. If it does not, confirm the channel is +twitter and that it
-    recognizes you as a +o user. See usage notes above.
-  - `!twit_request_token` / `!twit_access_token` should only need to be done
-    once (unless you wish to change the account that is used).
+  - Say `!twit_request_token` in a channel you set +twitter. You will be given
+    instructions on what to do after (calling `!twit_access_token`, etc). The
+    bot should respond to you in the channel. If it does not, confirm the
+    channel is +twitter and that it recognizes you as a +o user. See usage
+    notes above.
   - Alter the variables at the top of twitlib.tcl and twitter.tcl to change
     various options.
 
@@ -80,6 +80,8 @@ The libraries/tools in this repository are:
       set +twitter. The bot should answer you.
   * No status updates show.
     * Ensure that `poll_home_timeline` at the top of twitter.tcl is set 1.
+  * How do I change the Twitter account used by the bot?
+    * Use the `!twit_request_token` command.
 
 
 ## Authentication notes
