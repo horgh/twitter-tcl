@@ -55,6 +55,12 @@ The libraries/tools in this repository are:
     file.
   - Register for a consumer key/secret at [https://apps.twitter.com](https://apps.twitter.com)
     by creating an application. This is used for authentication.
+  - Make sure your application is set to have Read and Write permission. If you
+    don't, then you will not be able to do things like follow people or tweet.
+    There is a 3rd permission level where you can access direct messages, so if
+    you want to be able to do that, you should enable that too. The permission
+    settings are under the application's Permissions tab (at the time of
+    writing).
   - Find your consumer key (API key) and consumer secret (API secret) for the
     application you registered. At the time of writing, this is under the Keys
     and Access Tokens tab for your application.
