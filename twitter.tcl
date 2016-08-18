@@ -357,6 +357,10 @@ proc ::twitter::followers {nick uhost hand chan argv} {
 	foreach line [::twitter::split_line 300 $followers] {
 		twitter::output $chan "Followers: $followers"
 	}
+
+	if {[llength $users] == 0} {
+		::twitter::output $chan "$screen_name has no followers."
+	}
 }
 
 # Returns the latest users following acct is following (up to 100)
@@ -390,6 +394,10 @@ proc ::twitter::following {nick uhost hand chan argv} {
 
 	foreach line [::twitter::split_line 300 $following] {
 		::twitter::output $chan "Following: $line"
+	}
+
+	if {[llength $users] == 0} {
+		::twitter::output $chan "$screen_name is not following anyone."
 	}
 }
 
