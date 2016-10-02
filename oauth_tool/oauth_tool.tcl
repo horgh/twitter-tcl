@@ -30,7 +30,7 @@ proc ::usage {} {
 # perform authentication step 1 - request authorisation URL to get
 # a PIN.
 proc ::get_pin {consumer_key consumer_secret} {
-	set d [::oauth::get_request_token $consumer_key $consumer_secret]
+	set d [::twitoauth::get_request_token $consumer_key $consumer_secret]
 	foreach key [dict keys $d] {
 		set val [dict get $d $key]
 		puts "$key = $val"
@@ -42,7 +42,7 @@ proc ::get_pin {consumer_key consumer_secret} {
 
 # perform authentication step 2 - use the PIN from step 1 to authenticate.
 proc ::get_token {consumer_key consumer_secret token token_secret pin} {
-	set d [::oauth::get_access_token $consumer_key $consumer_secret \
+	set d [::twitoauth::get_access_token $consumer_key $consumer_secret \
 		$token $token_secret $pin]
 	foreach key [dict keys $d] {
 		set val [dict get $d $key]
@@ -98,7 +98,7 @@ proc ::include_libraries {} {
 		set auto_path [linsert $auto_path 0 $parent]
 	}
 
-	package require oauth
+	package require twitoauth
 	package require twitlib
 }
 

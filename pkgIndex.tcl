@@ -8,5 +8,5 @@
 # script is sourced, the variable $dir must contain the
 # full path name of this file's directory.
 
-package ifneeded oauth 0.1 [list source [file join $dir oauth.tcl]]
 package ifneeded twitlib 0.1 [list source [file join $dir twitlib.tcl]]
+package ifneeded twitoauth 0.1 [list source [file join $dir twitoauth.tcl]]

@@ -6,7 +6,7 @@
 #
 
 package require json
-package require oauth
+package require twitoauth
 
 package provide twitlib 0.1
 
@@ -77,7 +77,7 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 		#   for the purposes of oauth signing.
 	}
 
-	set data [::oauth::query_api $url $::twitlib::oauth_consumer_key \
+	set data [::twitoauth::query_api $url $::twitlib::oauth_consumer_key \
 		$::twitlib::oauth_consumer_secret $method $::twitlib::oauth_token \
 		$::twitlib::oauth_token_secret $query_list]
 

@@ -6,7 +6,7 @@
 
 package require http
 package require htmlparse
-package require oauth
+package require twitoauth
 package require twitlib
 
 namespace eval twitter {
@@ -89,7 +89,7 @@ proc twitter::oauth_request {nick uhost hand chan argv} {
 	}
 	lassign $argv ::twitlib::oauth_consumer_key ::twitlib::oauth_consumer_secret
 
-	if {[catch {::oauth::get_request_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret} data]} {
+	if {[catch {::twitoauth::get_request_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
@@ -111,7 +111,7 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 	}
 	lassign $args oauth_token oauth_token_secret pin
 
-	if {[catch {::oauth::get_access_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret $oauth_token $oauth_token_secret $pin} data]} {
+	if {[catch {::twitoauth::get_access_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret $oauth_token $oauth_token_secret $pin} data]} {
 		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
