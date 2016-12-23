@@ -31,6 +31,9 @@ namespace eval twitter {
 	# Whether to poll mentions timeline.
 	variable poll_mentions_timeline 0
 
+	# Maximum characters per output line.
+	variable line_length 400
+
 	#
 	# You shouldn't need to change anything below this point!
 	#
@@ -51,19 +54,19 @@ namespace eval twitter {
 	bind pub	o|o "!twit"             ::twitter::tweet
 	bind pub	o|o "!tweet"            ::twitter::tweet
 	bind pub	o|o "!twit_msg"         ::twitter::msg
-	bind pub	o|o "!twit_trends"      ::twitter::trends_global
+	bind pub	-|- "!twit_trends"      ::twitter::trends_global
 	bind pub	o|o "!follow"           ::twitter::follow
 	bind pub	o|o "!unfollow"         ::twitter::unfollow
-	bind pub	o|o "!twit_updates"     ::twitter::updates
-	bind pub	o|o "!twit_msgs"        ::twitter::msgs
-	bind pub	o|o "!twit_search"      ::twitter::search
-	bind pub	o|o "!twit_searchusers" ::twitter::search_users
+	bind pub	-|- "!twit_updates"     ::twitter::updates
+	bind pub	-|- "!twit_msgs"        ::twitter::msgs
+	bind pub	-|- "!twit_search"      ::twitter::search
+	bind pub	-|- "!twit_searchusers" ::twitter::search_users
 
 	variable followers_trigger !followers
-	bind pub	o|o $followers_trigger  ::twitter::followers
+	bind pub	-|- $followers_trigger  ::twitter::followers
 
 	variable following_trigger !following
-	bind pub	o|o $following_trigger  ::twitter::following
+	bind pub	-|- $following_trigger  ::twitter::following
 
 	bind pub	o|o "!retweet"          ::twitter::retweet
 	bind pub	o|o "!update_interval"  ::twitter::update_interval
@@ -175,9 +178,9 @@ proc twitter::update_interval {nick uhost hand chan argv} {
 
 # Output decoded/split string to given channel
 proc ::twitter::output {chan str} {
-	set str [htmlparse::mapEscapes $str]
+	set str [::htmlparse::mapEscapes $str]
 	set str [regsub -all -- {\n} $str " "]
-	$twitter::output_cmd "PRIVMSG $chan :$str"
+	$::twitter::output_cmd "PRIVMSG $chan :$str"
 }
 
 # Format status updates and output
@@ -281,8 +284,8 @@ proc twitter::updates {nick uhost hand chan argv} {
 }
 
 # Return top 5 results for query $argv
-proc twitter::search {nick uhost hand chan argv} {
-	if {![channel get $chan twitter]} { return }
+proc ::twitter::search {nick uhost hand chan argv} {
+	# Let this command work in any channel we're in.
 
 	if {[string length $argv] < 1 || [string length $argv] > 140} {
 		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_search <string 140 chars or less>"
@@ -302,13 +305,14 @@ proc twitter::search {nick uhost hand chan argv} {
 	set statuses [dict get $data statuses]
 	set count 0
 	foreach status $statuses {
-		twitter::output $chan "#[incr count] [dict get $status text]"
+		set user [dict get $status user]
+		::twitter::output $chan "\002[dict get $user screen_name]\002: [dict get $status text]"
 	}
 }
 
 # Get first 5 results from users search
-proc twitter::search_users {nick uhost hand chan argv} {
-	if {![channel get $chan twitter]} { return }
+proc ::twitter::search_users {nick uhost hand chan argv} {
+	# Let this command work in any channel we're in.
 
 	if {[string length $argv] < 1} {
 		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_searchusers <string>"
@@ -354,7 +358,7 @@ proc ::twitter::followers {nick uhost hand chan argv} {
 	}
 	set followers [string trim $followers]
 
-	foreach line [::twitter::split_line 300 $followers] {
+	foreach line [::twitter::split_line $::twitter::line_length $followers] {
 		twitter::output $chan "Followers: $followers"
 	}
 
@@ -392,7 +396,7 @@ proc ::twitter::following {nick uhost hand chan argv} {
 	}
 	set following [string trim $following]
 
-	foreach line [::twitter::split_line 300 $following] {
+	foreach line [::twitter::split_line $::twitter::line_length $following] {
 		::twitter::output $chan "Following: $line"
 	}
 
@@ -403,11 +407,11 @@ proc ::twitter::following {nick uhost hand chan argv} {
 
 # Retrieve and output global trends.
 proc ::twitter::trends_global {nick uhost hand chan argv} {
-	if {![channel get $chan twitter]} { return }
+	# Let this command work in any channel we're in.
 
 	# id is a WOED (where on earth id). 1 means global.
 	if {[catch {::twitlib::query $::twitlib::trends_place_url [list id 1] GET} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Trends request failed."
+		$twitter::output_cmd "PRIVMSG $chan :Trends request failed: $result."
 		return
 	}
 
@@ -427,10 +431,17 @@ proc ::twitter::trends_global {nick uhost hand chan argv} {
 		if {$output != ""} {
 			append output " "
 		}
+
 		append output "\002#[incr count]\002 [dict get $trend name]"
+
+		if {$count >= 20} {
+			break
+		}
 	}
 
-	::twitter::output $chan $output
+	foreach line [::twitter::split_line $::twitter::line_length $output] {
+		::twitter::output $chan $line
+	}
 }
 
 # Direct messages
