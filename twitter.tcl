@@ -401,34 +401,36 @@ proc ::twitter::following {nick uhost hand chan argv} {
 	}
 }
 
-# Get global trends
-# GET /1.1/trends/place.json?id=1 provides us with the 'global'
-# trends.
-# we can provide different ids to see trends in other locations.
-proc twitter::trends_global {nick uhost hand chan argv} {
+# Retrieve and output global trends.
+proc ::twitter::trends_global {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
+	# id is a WOED (where on earth id). 1 means global.
 	if {[catch {::twitlib::query $::twitlib::trends_place_url [list id 1] GET} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Trend fetch failed!"
+		$twitter::output_cmd "PRIVMSG $chan :Trends request failed."
 		return
 	}
 
-	# we receive a 'list' with one element - the object with our result.
-	# the object has keys 'trends' (list of trends), 'as_of', 'created_at',
-	# and 'locations'.
+	# We receive an array with one element - the object with our result.
+	#
+	# The object has keys trends (list of trends), as_of, created_at, and
+	# locations.
 	set result [lindex $result 0]
-	# pull out the trends object. this is a list of objects (dicts). the most
-	# relevant piece of data we care about is the on the key 'name' - the
-	# trend name.
+
+	# Pull out the trends object. This is an array of JSON objects (as dicts).
+	# What I care about in these objects is the name. This is the trend name.
 	set trends [dict get $result trends]
 
-	set output []
+	set output ""
 	set count 0
 	foreach trend $trends {
-		set output "$output\002#[incr count]\002 [dict get $trend name] "
+		if {$output != ""} {
+			append output " "
+		}
+		append output "\002#[incr count]\002 [dict get $trend name]"
 	}
 
-	twitter::output $chan $output
+	::twitter::output $chan $output
 }
 
 # Direct messages
