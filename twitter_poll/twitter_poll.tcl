@@ -3,7 +3,7 @@
 # Twitter tweet poller.
 #
 # This script polls latest unseen home statuses from twitter and inserts them
-# into a postgres database.
+# into a PostgreSQL database.
 #
 
 namespace eval ::twitter_poll {
@@ -20,13 +20,16 @@ namespace eval ::twitter_poll {
 
 # Setup our configuration variables.
 #
-# we expect a configuration file in this location:
+# We expect a configuration file in this location:
+#
 # ~/.config/twitter_poll.conf
 #
-# the contents of the config are key and values in the format:
+# The contents of the config are key and values in the format:
+#
 # key=value
 #
-# we require the keys:
+# We require the keys:
+#
 # oauth_consumer_key
 # oauth_consumer_secret
 # oauth_token
@@ -41,7 +44,7 @@ proc ::twitter_poll::setup {} {
 	# ~/.config/twitter_poll.conf
 	set config_file [file join $::env(HOME) .config twitter_poll.conf]
 
-	# TODO: check that file exists first?
+	# TODO: Check that file exists first? So we can give a nicer error message.
 	set f [open $config_file]
 	set contents [read -nonewline $f]
 	close $f
@@ -63,16 +66,16 @@ proc ::twitter_poll::setup {} {
 		dict set values $key $val
 	}
 
-	# TODO: the below will generate an error if a config key is missing.
-	#   it would be better to handle this more cleanly.
+	# TODO: The below will generate an error if a config key is missing. It would
+	# be better to handle this more cleanly.
 
-	# oauth variables.
+	# OAuth variables.
 	set ::twitlib::oauth_consumer_key    [dict get $values oauth_consumer_key]
 	set ::twitlib::oauth_consumer_secret [dict get $values oauth_consumer_secret]
 	set ::twitlib::oauth_token           [dict get $values oauth_token]
 	set ::twitlib::oauth_token_secret    [dict get $values oauth_token_secret]
 
-	# database variables.
+	# Database variables.
 	set ::twitter_poll::db_name [dict get $values db_name]
 	set ::twitter_poll::db_host [dict get $values db_host]
 	set ::twitter_poll::db_port [dict get $values db_port]
@@ -216,11 +219,11 @@ proc ::twitter_poll::poll {} {
 	return 1
 }
 
-# include_libraries sets up the package include path (auto_path) and then
-# loads required packages.
+# include_libraries sets up the package include path (auto_path) and then loads
+# required packages.
 #
-# I do this in a procedure rather than globally so I can dynamically adjust
-# the auto_path.
+# I do this in a procedure rather than globally so I can dynamically adjust the
+# auto_path.
 proc ::twitter_poll::include_libraries {} {
 	global auto_path
 
