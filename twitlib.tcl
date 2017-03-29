@@ -228,10 +228,10 @@ proc ::twitlib::get_unseen_updates {} {
 
 		lappend updates $d
 
-		# always store the last tweet id we see rather than
-		# trying to compare numerically because I'm not sure
-		# comparing numerically is correct.
-		set ::twitlib::last_id $id
+		# Track the max id we've seen. We use this for since_id.
+		if {$id > $::twitlib::last_id} {
+			set ::twitlib::last_id $id
+		}
 	}
 	return $updates
 }
@@ -272,10 +272,10 @@ proc ::twitlib::get_unseen_mentions {} {
 
 		lappend updates $d
 
-		# always store the last tweet id we see rather than
-		# trying to compare numerically because I'm not sure
-		# comparing numerically is correct.
-		set ::twitlib::last_mentions_id $id
+		# Track the max id we've seen. We use this for since_id.
+		if {$id > $::twitlib::last_mentions_id} {
+			set ::twitlib::last_mentions_id $id
+		}
 	}
 	return $updates
 }
