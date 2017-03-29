@@ -216,7 +216,7 @@ proc ::twitlib::get_unseen_updates {} {
 	set updates [list]
 	foreach status $statuses {
 		set screen_name [dict get $status user screen_name]
-		set id          [dict get $status id]
+		set id          [dict get $status id_str]
 		set created_at  [dict get $status created_at]
 		set text        [dict get $status text]
 

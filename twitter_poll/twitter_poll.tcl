@@ -95,29 +95,30 @@ proc ::twitter_poll::get_db_handle {} {
 	return $dbh
 }
 
+# See here for working with timelines:
+# https://dev.twitter.com/rest/public/timelines
 proc ::twitter_poll::get_last_tweet_id {dbh} {
-	# TODO: hmm, I think tweets are not guaranteed to always
-	#   be increasing.
-	#   but then why does the since_id parameter in the API exist?
-	#   presumably it must be correct then.
-
-	# take my internal id column so we can be sure it's the last
-	# tweet received. I'm not sure max tweet id is valid due to
-	# how the numbering works
-	set sql "SELECT tweet_id FROM tweet ORDER BY id DESC LIMIT 1"
+	# "This problem is avoided by setting the sinc_id parameter to the greatest ID
+	# of all the Tweets your application has already processed."
+	set sql "SELECT MAX(tweet_id) AS tweet_id FROM tweet"
 	set tweet_id 1
+
 	::pg::select $dbh $sql array {
 		set tweet_id $array(tweet_id)
 	}
+
 	if {$::twitter_poll::verbose} {
 		puts "Latest tweet ID seen: $tweet_id"
 	}
-	# NOTE: apparently select proc cleans up for us.
+
+	# NOTE: Apparently select proc cleans up for us.
+
 	return $tweet_id
 }
 
-# status is a dict with keys: id, screen_name, text.
-# it represents a single tweet.
+# Status is a dict with keys: id, screen_name, text.
+#
+# It represents a single tweet.
 proc ::twitter_poll::store_update {dbh status} {
 	set sql {\
 		INSERT INTO tweet \
@@ -127,20 +128,26 @@ proc ::twitter_poll::store_update {dbh status} {
 			(SELECT NULL FROM tweet WHERE tweet_id = $5) \
 		}
 
-	# we get back a result handle that can be used to get
-	# at other data.
-	# it may be used to clean up too.
 	set tweet [dict get $status text]
+
+	# We get back a result handle that can be used to get at other data. It may
+	# be used to clean up too.
+
+	# NOTE: id is actually id_str. It's extracted inside twitlib.
+
 	set result [::pg::sqlexec $dbh $sql \
 		[dict get $status screen_name] \
 		$tweet \
 		[dict get $status id] \
 		[dict get $status created_at] \
 		[dict get $status id]]
+
 	set result_status [::pg::result $result -status]
+
 	if {$::twitter_poll::verbose} {
 		puts "Result status: $result_status"
 	}
+
 	if {$result_status != "PGRES_COMMAND_OK"} {
 		set err [::pg::result $result -error]
 		puts "Failed to insert tweet: $tweet"
@@ -148,11 +155,14 @@ proc ::twitter_poll::store_update {dbh status} {
 		::pg::result $result -clear
 		return 0
 	}
-	# clean up.
-	::pg::result $result -clear
+
 	if {$::twitter_poll::verbose} {
-		puts "Stored tweet: $tweet"
+		puts "Stored tweet: $tweet (ID: [dict get $status id])"
 	}
+
+	# Clean up.
+	::pg::result $result -clear
+
 	return 1
 }
 
