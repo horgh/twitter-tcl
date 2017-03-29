@@ -7,18 +7,18 @@
 #
 
 namespace eval ::twitter_poll {
-	# database connection variables.
+	# Database connection variables.
 	variable db_name {}
 	variable db_host 0
 	variable db_port 5432
 	variable db_user {}
 	variable db_pass {}
 
-	# verbosity. boolean.
+	# Verbosity. Boolean.
 	variable verbose 0
 }
 
-# setup our configuration variables.
+# Setup our configuration variables.
 #
 # we expect a configuration file in this location:
 # ~/.config/twitter_poll.conf
@@ -157,37 +157,52 @@ proc ::twitter_poll::store_update {dbh status} {
 }
 
 proc ::twitter_poll::poll {} {
-	# connect to the database.
 	set dbh [::twitter_poll::get_db_handle]
 
-	# find the last tweet id we have recorded. we use this as the
-	# last seen tweet id.
+	# Find the last tweet id we have recorded. We use this as the last seen tweet
+	# id.
+
 	if {$::twitter_poll::verbose} {
 		puts "Determining latest tweet ID..."
 	}
+
 	set ::twitlib::last_id [::twitter_poll::get_last_tweet_id $dbh]
 
-	# retrieve unseen tweets.
+	if {$::twitter_poll::verbose} {
+		puts "Latest tweet ID is $::twitlib::last_id."
+	}
+
+	# Retrieve unseen tweets.
+
 	if {$::twitter_poll::verbose} {
 		puts "Fetching updates..."
 	}
+
 	set updates [::twitlib::get_unseen_updates]
+
 	if {$::twitter_poll::verbose} {
-		puts "Updated received! Storing..."
+		puts "Updates received! Storing..."
 	}
 
-	# add each unseen tweet into the database.
 	foreach status $updates {
 		if {![::twitter_poll::store_update $dbh $status]} {
 			::pg::disconnect $dbh
 			return 0
 		}
 	}
+
+	set count [llength $updates]
+
 	if {$::twitter_poll::verbose} {
-		set count [llength $updates]
 		puts "Retrieved $count update(s)."
 	}
+
+	if {$count >= $::twitlib::max_updates} {
+		puts "Warning: Retrieved maximum number of tweets: $count"
+	}
+
 	::pg::disconnect $dbh
+
 	return 1
 }
 
@@ -216,7 +231,6 @@ proc ::twitter_poll::include_libraries {} {
 	package require twitlib
 }
 
-# program entry.
 proc ::twitter_poll::main {} {
 	::twitter_poll::include_libraries
 
