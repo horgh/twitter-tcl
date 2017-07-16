@@ -10,21 +10,24 @@ package require twitoauth
 package require twitlib
 
 namespace eval ::twitter {
-	# Check for tweets every 1, 5, or 10 min
-	# Must be 1, 5, or 10!
-	# Using 1 minute may put you up against Twitter's API limits if you have both
-	# home and mentions polling enabled.
+	# Check for tweets every 1, 5, or 10 min.
+	#
+	# This option must be 1, 5, or 10! You can't have anything else right now.
+	#
+	# Note using 1 minute may put you up against Twitter's API limits if you have
+	# both home and mentions polling enabled.
 	variable update_time 10
 
-	# Show tweet number (1 = on, 0 = off)
-	# This is only really relevant if you are going to !retweet
+	# Show tweet number in tweets shown in channels (1 = on, 0 = off).
+	# This is only really relevant if you are going to !retweet.
 	variable show_tweetid 0
 
 	# Control what we poll. Each of these poll types is a separate API request
 	# every 'update_time' interval, so if you don't need/want one, then it is
-	# more efficient to disable.
-	# By default we poll only the home timeline. This means you will see tweets of
-	# users you follow.
+	# more efficient to disable it.
+	#
+	# By default we poll only the home timeline. This means you will see tweets
+	# of users you follow.
 
 	# Whether to poll home timeline.
 	variable poll_home_timeline 1
@@ -38,8 +41,9 @@ namespace eval ::twitter {
 	# You shouldn't need to change anything below this point!
 	#
 
-	# Number of followers to output when listing followers.
-	# This request can return a maximum of 5000 at a time.
+	# Number of followers to output when listing followers. The API can return a
+	# maximum of 5000 at a time but you probably don't want to spam channels with
+	# that many!
 	variable followers_limit 50
 
 	# This file holds state information (id of last seen tweet, oauth keys).
@@ -50,7 +54,7 @@ namespace eval ::twitter {
 	variable last_update
 	variable last_msg
 
-	# Twitter binds.
+	# Channel command binds.
 	bind pub	o|o "!twit"             ::twitter::tweet
 	bind pub	o|o "!tweet"            ::twitter::tweet
 	bind pub	o|o "!twit_msg"         ::twitter::msg
@@ -71,14 +75,14 @@ namespace eval ::twitter {
 	bind pub	o|o "!retweet"          ::twitter::retweet
 	bind pub	o|o "!update_interval"  ::twitter::update_interval
 
-	# OAuth binds
+	# OAuth channel command binds.
 	bind pub	o|o "!twit_request_token" ::twitter::oauth_request
 	bind pub	o|o "!twit_access_token"  ::twitter::oauth_access
 
 	# Save our state on save event.
 	bind evnt	-|- "save" ::twitter::write_states
 
-	# Add channel flag +/-twitter
+	# Add channel flag +/-twitter.
 	setudef flag twitter
 }
 
