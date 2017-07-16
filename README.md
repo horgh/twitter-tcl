@@ -1,8 +1,7 @@
 # twitter-tcl
 
-The purpose of this project is to provide an
-[Eggdrop](http://www.eggheads.org) bot script to show tweets in IRC
-channels.
+This project provides an [Eggdrop](http://www.eggheads.org) bot script to
+show tweets in IRC channels.
 
 The repository contains libraries that are useful independently as well.
 
@@ -20,10 +19,7 @@ The scripts/libraries in this repository are:
   * Eggdrop
   * tcllib
   * Tcl (8.5+)
-  * `twitter_poll` depends on Pgtcl
 
-
-# twitter.tcl information
 
 ## Usage notes
 
@@ -119,47 +115,9 @@ The scripts/libraries in this repository are:
   - `!update_interval` - Change the time between status fetches
 
 
-## IRC OAuth commands
+### OAuth commands
 
   * `!twit_request_token <consumer_key> <consumer_secret>`
     - Initiate authentication. This is step one.
   * `!twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>`
     - Complete authentication. This is step two.
-
-
-# twitoauth.tcl Usage information
-
-## Setup for users
-
-  - Register for consumer key/secret at
-   [twitter.com/oauth\_clients](https://twitter.com/oauth_clients).
-
-
-## Library usage
-
-  - You can store `oauth_token` / `oauth_token_secret` from
-    `::twitoauth::get_access_token` and use them indefinitely. Thus the
-    setup (below) need only be done once by storing and reusing these.
-  - Start with `::twitoauth::get_request_token`.
-   - Usage: `::twitoauth::get_request_token $consumer_key $consumer_secret`
-   - Returns a dict including `oauth_token` / `oauth_token_secret` for
-     `https://api.twitter.com/oauth/authorize?oauth_token=OAUTH_TOKEN`
-   - Going to this URL, logging in, and allowing will give a PIN e.g.
-     1021393.
-  - Then use the pin as the value for `oauth_verifier` in
-    `::twitoauth::get_access_token`.
-   - Usage: `::twitoauth::get_access_token $consumer_key $consumer_token
-     $oauth_token $oauth_token_secret $pin`
-   - Also use `oauth_token` / `oauth_token_secret` from
-     `get_request_token` here.
-   - Returns a dict including new `oauth_token` & `oauth_token_secret`
-     (access token).
-  - Afterwards use `oauth_token` / `oauth_token_secret` from
-    `get_access_token` in `::twitoauth::query_api` to make API calls.
-   - Usage: `::twitoauth::query_api $url $consumer_key $consumer_secret $http_method
-     $oauth_token $oauth_token_secret $key:value_http_query`
-   - The `$key:value_http_query` is such that you would pass to
-     `::http::formatQuery` e.g. `status {this is a tweet}`.
-   - Example call: `puts [::twitoauth::query_api
-     https://api.twitter.com/1/statuses/update.json <key> <secret> POST
-     $oauth_token_done $oauth_token_secret_done [list status "does it work?"]]`
