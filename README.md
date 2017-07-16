@@ -1,25 +1,18 @@
 # twitter-tcl
 
-Twitter libraries and client scripts in Tcl.
-
-The primary purpose of this project is to provide an
+The purpose of this project is to provide an
 [Eggdrop](http://www.eggheads.org) bot script to show tweets in IRC
 channels.
 
-The repository contains other Twitter related tools and libraries as well.
+The repository contains libraries that are useful independently as well.
 
-The libraries/tools in this repository are:
+The scripts/libraries in this repository are:
 
   * `twitoauth.tcl` - A library to integrate with Twitter's OAuth.
-  * `twitlib.tcl` - Twitter API client library.
+  * `twitlib.tcl` - A Twitter API client library.
   * `twitter.tcl` - An Eggdrop IRC bot client/gateway script. You can use
     this to output Twitter home/mentions timeline statuses to IRC channels.
     You can also do things like tweet from IRC and follow/unfollow users.
-  * `twitter_poll` - A script that polls a Twitter home timeline for tweets
-    and inserts them into a [PostgreSQL](https://www.postgresql.org)
-    database.
-  * `test_oauth.tcl` - A script to test authentication with OAuth. This can
-    also be used to build the tokens/keys needed for OAuth.
 
 
 # Requirements
