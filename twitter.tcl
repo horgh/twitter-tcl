@@ -598,9 +598,9 @@ proc ::twitter::write_states {args} {
 	close $fid
 }
 
-# Split long line into list of strings for multi line output to irc
-# Split into strings of ~max
-# by fedex
+# Split long line into list of strings for multi line output to irc.
+#
+# Split into strings of ~max.
 proc ::twitter::split_line {max str} {
 	set last [expr {[string length $str] -1}]
 	set start 0
