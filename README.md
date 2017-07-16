@@ -17,9 +17,10 @@ The scripts/libraries in this repository are:
 
 # Requirements
 
- * tcllib
- * Tcl (8.5+)
- * `twitter_poll` depends on Pgtcl
+  * Eggdrop
+  * tcllib
+  * Tcl (8.5+)
+  * `twitter_poll` depends on Pgtcl
 
 
 # twitter.tcl information
