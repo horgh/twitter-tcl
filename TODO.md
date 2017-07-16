@@ -1,3 +1,5 @@
+  - Don't show any tweets on first update after authenticating. Just track
+    the latest ID then show new ones after that.
   - add check for change in twitter followers periodically (daily?)
   - add `twit_status` to show account currently on
   - add block
