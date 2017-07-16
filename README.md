@@ -1,7 +1,7 @@
 # twitter-tcl
 
 This project provides an [Eggdrop](http://www.eggheads.org) bot script to
-show tweets in IRC channels.
+show tweets in IRC channels. You can also do things like tweet from IRC.
 
 The repository contains libraries that are useful independently as well.
 
@@ -21,25 +21,6 @@ The scripts/libraries in this repository are:
   * Tcl (8.5+)
 
 
-## Usage notes
-
-  - `twitter.tcl` depends on `twitoauth.tcl` and `twitlib.tcl`.
-  - It stores state in the value of the variable `$state_file` file. This
-    file is relative to the Eggdrop root directory. You can set it to any
-    path.
-  - The default time between tweet fetches is 10 minutes. You can alter the
-    "bind time" option below to change to a different setting. Note you may
-    not be able to use the 1 minute option if you are polling both the home
-    and the mentions timeline as this can exceed Twitter's API limits.
-  - Requires +o on the bot to issue `!commands`. This is different from
-    having operator status in the channel. It means you must be recognized
-    as a user with +o permission by the bot in its user records. If the bot
-    does not respond to any of the commands in a channel set `+twitter`,
-    then the bot may not recognize you.
-  - You can set multiple channels that the bot outputs and accepts commands on
-    by setting each channel `.chanset #channel +twitter`
-
-
 ## Setup
 
   - Load `twitoauth.tcl`, `twitlib.tcl`, and `twitter.tcl` on to your bot.
@@ -47,56 +28,48 @@ The scripts/libraries in this repository are:
     libraries that the latter depends on. Like other Eggdrop scripts, you
     can place them in a scripts subdirectory, and source them as usual in
     your configuration file.
+  - Review the variables at the top of `twitlib.tcl` and `twitter.tcl`. You
+    can change the options there if you like. The defaults are probably
+    okay.
   - Register for a consumer key/secret at
     [apps.twitter.com](https://apps.twitter.com) by creating an
-    application. This is used for authentication.
-  - Make sure your application is set to have Read and Write permission. If you
-    don't, then you will not be able to do things like follow people or tweet.
-    There is a 3rd permission level where you can access direct messages, so if
-    you want to be able to do that, you should enable that too. The permission
-    settings are under the application's Permissions tab (at the time of
-    writing).
-  - Find your consumer key (API key) and consumer secret (API secret) for the
-    application you registered. At the time of writing, this is under the Keys
-    and Access Tokens tab for your application.
-  - `.chanset #channel +twitter` to provide access to !commands in #channel.
-    These channels also receive status update output. You issue this command in
-    the Eggdrop's partyline which you can reach either through telnet or DCC
-    chat. How you get on to the partyline depends on your configuration.
+    application. This is used for authentication with Twitter.
+  - Make sure your Twitter application is set to have Read and Write
+    permission. If it isn't then you will not be able to do things like
+    follow people or tweet. There is a 3rd permission level where you can
+    access direct messages, so if you want to be able to do that, you
+    should enable that too. The permission settings are under the
+    application's Permissions tab (at the time of writing).
+  - Find your Twitter consumer key (API key) and consumer secret (API
+    secret) for the application you registered. At the time of writing,
+    this is under the Keys and Access Tokens tab for your application.
+  - `.chanset #channel +twitter` to provide access to `!commands` in
+    `#channel`. These channels also receive status update output. You issue
+    this command in the Eggdrop's partyline which you can reach either
+    through telnet or DCC chat. How you get on to the partyline depends on
+    your configuration.
   - Say `!twit_request_token` in a channel you set `+twitter`. You will be
     given instructions on what to do after (calling `!twit_access_token`,
     etc). The bot should respond to you in the channel. If it does not,
     confirm the channel is `+twitter` and that it recognizes you as a +o
-    user. See usage notes above.
-  - Alter the variables at the top of `twitlib.tcl` and `twitter.tcl` to
-    change various options.
+    user.
 
 
-## FAQ
+## Options
 
-  * Error `Update retrieval (mentions) failed: OAuth not initialised.` in
-    partyline.
-    * This means you need to complete the OAuth authentication. To do this, see
-      the setup points above. TL;DR: Issue `!twit_request_token` in a channel
-      set `+twitter`. The bot should answer you.
-  * No status updates show.
-    * Ensure that `poll_home_timeline` at the top of twitter.tcl is set 1.
-  * How do I change the Twitter account used by the bot?
-    * Use the `!twit_request_token` command.
+There are more options than these. Refer to the header section of the
+scripts to see what else is available.
 
-
-## Authentication notes
-
-  - To begin authentication on an account use `!twit_request_token`.
-  - To change which account the script follows use `!twit_request_token`. Make
-    sure you are logged into Twitter on the account you want and visit the
-    authentication URL (or login to the account you want at this URL)
-    and do `!twit_access_token` as before.
-  - Changing account / enabling OAuth resets tweet tracking state so you will
-    likely be flooded by up to `max_updates` tweets.
+  - The script stores state (authentication keys, seen tweets, etc) in the
+    file defined by the `$state_file` variable. This file is relative to
+    the Eggdrop root directory. You can set it to any path.
+  - The default time between tweet fetches is 10 minutes. You can alter the
+    "bind time" option below to change to a different setting. Note you may
+    not be able to use the 1 minute option if you are polling both the home
+    and the mentions timeline as this can exceed Twitter's API limits.
 
 
-## IRC Commands
+## IRC channel commands
 
   - `!twit` / `!tweet` - Send a tweet
   - `!twit_msg` - Send a private message
@@ -113,11 +86,36 @@ The scripts/libraries in this repository are:
     the option `followers_limit`)
   - `!retweet` - Retweet
   - `!update_interval` - Change the time between status fetches
-
-
-### OAuth commands
-
   * `!twit_request_token <consumer_key> <consumer_secret>`
-    - Initiate authentication. This is step one.
+    - Initiate authentication. This is step one of the authentication
+      process.
   * `!twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>`
-    - Complete authentication. This is step two.
+    - Complete authentication. This is step two of the authentication
+      process.
+
+
+## FAQ
+
+  - How do I control what channels the bot shows tweets in?
+    - You can set multiple channels that the bot outputs and accepts
+      commands on by setting each channel `.chanset #channel +twitter`.
+  - Why isn't the bot responding to the `!commands`?
+    - First make sure the channel is set `+twitter`.
+    - If it is, then you may not be recognized as +o by the bot. These
+      commands require that the bot recognizes you as +o. This is not the
+      same as having operator status in the channel having operator status
+      in the channel. It means you must be recognized as a user with +o
+      permission by the bot in its user records.
+  - Why do I see the error `Update retrieval (mentions) failed: OAuth not
+    initialised.` in the bot's partyline?
+    - This means you need to complete the OAuth authentication. To do this, see
+      the setup points above. TL;DR: Issue `!twit_request_token` in a channel
+      set `+twitter`. The bot should answer you.
+  - Why do no status updates show?
+    - Ensure that `poll_home_timeline` at the top of `twitter.tcl` is set 1.
+  - How do I change the Twitter account used by the bot?
+    - Call `!twit_request_token` again. This restarts the authentication
+      process. Make sure you are logged into Twitter on the account you
+      want and visit the authentication URL (or login to the account you
+      want at this URL) and do `!twit_access_token` as when you initially
+      set up the bot.
