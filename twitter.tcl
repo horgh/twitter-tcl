@@ -9,7 +9,7 @@ package require htmlparse
 package require twitoauth
 package require twitlib
 
-namespace eval twitter {
+namespace eval ::twitter {
 	# Check for tweets every 1, 5, or 10 min
 	# Must be 1, 5, or 10!
 	# Using 1 minute may put you up against Twitter's API limits if you have both
@@ -83,39 +83,39 @@ namespace eval twitter {
 }
 
 # Handle retrieval of OAuth request token
-proc twitter::oauth_request {nick uhost hand chan argv} {
+proc ::twitter::oauth_request {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 	set argv [split $argv]
 	if {[llength $argv] != 2} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_request_token <consumer key> <consumer secret>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_request_token <consumer key> <consumer secret>"
 		return
 	}
 	lassign $argv ::twitlib::oauth_consumer_key ::twitlib::oauth_consumer_secret
 
 	if {[catch {::twitoauth::get_request_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
+		$::twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
 
 	set url [dict get $data auth_url]
-	$twitter::output_cmd "PRIVMSG $chan :To get your authentication verifier, visit ${url} and allow the application on your Twitter account."
-	$twitter::output_cmd "PRIVMSG $chan :Then call !twit_access_token [dict get $data oauth_token] [dict get $data oauth_token_secret] <PIN from authorization URL of !twit_request_token>"
+	$::twitter::output_cmd "PRIVMSG $chan :To get your authentication verifier, visit ${url} and allow the application on your Twitter account."
+	$::twitter::output_cmd "PRIVMSG $chan :Then call !twit_access_token [dict get $data oauth_token] [dict get $data oauth_token_secret] <PIN from authorization URL of !twit_request_token>"
 }
 
 # Handle retrieval of OAuth access token
 # if success, we store $::twitlib::oauth_token and $::twitlib::oauth_token_secret
-proc twitter::oauth_access {nick uhost hand chan argv} {
+proc ::twitter::oauth_access {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	set args [split $argv]
 	if {[llength $args] != 3} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_access_token <oauth_token> <oauth_token_secret> <PIN> (get these from !twit_request_token)"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_access_token <oauth_token> <oauth_token_secret> <PIN> (get these from !twit_request_token)"
 		return
 	}
 	lassign $args oauth_token oauth_token_secret pin
 
 	if {[catch {::twitoauth::get_access_token $::twitlib::oauth_consumer_key $::twitlib::oauth_consumer_secret $oauth_token $oauth_token_secret $pin} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Error: $data"
+		$::twitter::output_cmd "PRIVMSG $chan :Error: $data"
 		return
 	}
 
@@ -128,7 +128,7 @@ proc twitter::oauth_access {nick uhost hand chan argv} {
 	set ::twitlib::oauth_token [dict get $data oauth_token]
 	set ::twitlib::oauth_token_secret [dict get $data oauth_token_secret]
 	set screen_name [dict get $data screen_name]
-	$twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
+	$::twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
 }
 
 # set the update time by recreating the time bind.
@@ -154,8 +154,7 @@ proc ::twitter::set_update_time {delay} {
 # remove our time bind.
 proc ::twitter::flush_update_binds {} {
 	foreach binding [binds time] {
-		if {[lindex $binding 4] == "twitter::update" \
-			|| [lindex $binding 4] == "::twitter::update"} {
+		if {[lindex $binding 4] == "::twitter::update"} {
 			unbind [lindex $binding 0] [lindex $binding 1] [lindex $binding 2] \
 				[lindex $binding 4]
 		}
@@ -163,17 +162,17 @@ proc ::twitter::flush_update_binds {} {
 }
 
 # Change time between automatic update fetches
-proc twitter::update_interval {nick uhost hand chan argv} {
+proc ::twitter::update_interval {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {$argv != 1 && $argv != 10 && $argv != 5} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !update_interval <1, 5, or 10>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !update_interval <1, 5, or 10>"
 		return
 	}
 
-	twitter::set_update_time $argv
+	::twitter::set_update_time $argv
 
-	$twitter::output_cmd "PRIVMSG $chan :Update interval set to $argv minute(s)."
+	$::twitter::output_cmd "PRIVMSG $chan :Update interval set to $argv minute(s)."
 }
 
 # Output decoded/split string to given channel
@@ -184,20 +183,20 @@ proc ::twitter::output {chan str} {
 }
 
 # Format status updates and output
-proc twitter::output_update {chan name id str} {
+proc ::twitter::output_update {chan name id str} {
 	set out "\002$name\002: $str"
 	if {$::twitter::show_tweetid} {
 		append out " ($id)"
 	}
-	twitter::output $chan $out
+	::twitter::output $chan $out
 }
 
 # Retweet given id
-proc twitter::retweet {nick uhost hand chan argv} {
+proc ::twitter::retweet {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {[string length $argv] < 1 || ![regexp {^\d+$} $argv]} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !retweet <id>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !retweet <id>"
 		return
 	}
 
@@ -205,80 +204,80 @@ proc twitter::retweet {nick uhost hand chan argv} {
 	set url "${::twitlib::retweet_url}${argv}.json"
 
 	if {[catch {::twitlib::query $url {} POST} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Retweet failure. ($argv) (You can't retweet your own updates!)"
+		$::twitter::output_cmd "PRIVMSG $chan :Retweet failure. ($argv) (You can't retweet your own updates!)"
 		return
 	}
 
-	$twitter::output_cmd "PRIVMSG $chan :Retweet sent."
+	$::twitter::output_cmd "PRIVMSG $chan :Retweet sent."
 }
 
 # Follow a user (by screen name)
-proc twitter::follow {nick uhost hand chan argv} {
+proc ::twitter::follow {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {[string length $argv] < 1} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !follow <screen name>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !follow <screen name>"
 		return
 	}
 
 	if {[catch {::twitlib::query $::twitlib::follow_url [list screen_name $argv]} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Twitter failed or already friends with $argv!"
+		$::twitter::output_cmd "PRIVMSG $chan :Twitter failed or already friends with $argv!"
 		return
 	}
 
 	if {[dict exists $result error]} {
-		twitter::output $chan "Follow failed ($argv): [dict get $result error]"
+		::twitter::output $chan "Follow failed ($argv): [dict get $result error]"
 		return
 	}
 
-	twitter::output $chan "Now following [dict get $result screen_name]!"
+	::twitter::output $chan "Now following [dict get $result screen_name]!"
 }
 
 # Unfollow a user (by screen name)
-proc twitter::unfollow {nick uhost hand chan argv} {
+proc ::twitter::unfollow {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {[string length $argv] < 1} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !unfollow <screen name>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !unfollow <screen name>"
 		return
 	}
 
 	if {[catch {::twitlib::query $::twitlib::unfollow_url [list screen_name $argv]} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Unfollow failed. ($argv)"
+		$::twitter::output_cmd "PRIVMSG $chan :Unfollow failed. ($argv)"
 		return
 	}
 
 	if {[dict exists $result error]} {
-		twitter::output $chan "Unfollow failed ($argv): [dict get $result error]"
+		::twitter::output $chan "Unfollow failed ($argv): [dict get $result error]"
 		return
 	}
 
-	twitter::output $chan "Unfollowed [dict get $result screen_name]."
+	::twitter::output $chan "Unfollowed [dict get $result screen_name]."
 }
 
 # Get last n, n [1, 20] updates
-proc twitter::updates {nick uhost hand chan argv} {
+proc ::twitter::updates {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {[string length $argv] < 1 || ![string is integer $argv] || $argv > 20 || $argv < 1} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_updates <#1 to 20>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_updates <#1 to 20>"
 		return
 	}
 
 	if {[catch {::twitlib::query $::twitlib::home_url [list count $argv] GET} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Retrieval error: $result."
+		$::twitter::output_cmd "PRIVMSG $chan :Retrieval error: $result."
 		return
 	}
 
 	if {[llength $result] == 0} {
-		$twitter::output_cmd "PRIVMSG $chan :No updates."
+		$::twitter::output_cmd "PRIVMSG $chan :No updates."
 		return
 	}
 
 	set result [lreverse $result]
 	foreach status $result {
 		dict with status {
-			twitter::output_update $chan [dict get $user screen_name] $id $text
+			::twitter::output_update $chan [dict get $user screen_name] $id $text
 		}
 	}
 }
@@ -288,17 +287,17 @@ proc ::twitter::search {nick uhost hand chan argv} {
 	# Let this command work in any channel we're in.
 
 	if {[string length $argv] < 1 || [string length $argv] > 140} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_search <string 140 chars or less>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_search <string 140 chars or less>"
 		return
 	}
 
 	if {[catch {::twitlib::query $::twitlib::search_url [list q $argv count 4] GET} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)"
+		$::twitter::output_cmd "PRIVMSG $chan :Search error ($data)"
 		return
 	}
 
 	if {[dict exists $data error]} {
-		twitter::output $chan "Search failed ($argv): [dict get $result error]"
+		::twitter::output $chan "Search failed ($argv): [dict get $result error]"
 		return
 	}
 
@@ -315,17 +314,17 @@ proc ::twitter::search_users {nick uhost hand chan argv} {
 	# Let this command work in any channel we're in.
 
 	if {[string length $argv] < 1} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_searchusers <string>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_searchusers <string>"
 		return
 	}
 
 	if {[catch {::twitlib::query $::twitlib::search_users_url [list q $argv per_page 5] GET} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Search error ($data)."
+		$::twitter::output_cmd "PRIVMSG $chan :Search error ($data)."
 		return
 	}
 
 	foreach result $data {
-		twitter::output $chan "#[incr count] \002[dict get $result screen_name]\002 Name: [dict get $result name] Location: [dict get $result location] Description: [dict get $result description]"
+		::twitter::output $chan "#[incr count] \002[dict get $result screen_name]\002 Name: [dict get $result name] Location: [dict get $result location] Description: [dict get $result description]"
 	}
 }
 
@@ -359,7 +358,7 @@ proc ::twitter::followers {nick uhost hand chan argv} {
 	set followers [string trim $followers]
 
 	foreach line [::twitter::split_line $::twitter::line_length $followers] {
-		twitter::output $chan "Followers: $followers"
+		::twitter::output $chan "Followers: $followers"
 	}
 
 	if {[llength $users] == 0} {
@@ -411,7 +410,7 @@ proc ::twitter::trends_global {nick uhost hand chan argv} {
 
 	# id is a WOED (where on earth id). 1 means global.
 	if {[catch {::twitlib::query $::twitlib::trends_place_url [list id 1] GET} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Trends request failed: $result."
+		$::twitter::output_cmd "PRIVMSG $chan :Trends request failed: $result."
 		return
 	}
 
@@ -446,44 +445,45 @@ proc ::twitter::trends_global {nick uhost hand chan argv} {
 
 # Direct messages
 # Get last n, n [1, 20] messages or new if no argument
-proc twitter::msgs {nick uhost hand chan argv} {
+proc ::twitter::msgs {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {[string length $argv] == 1 && [string is integer $argv] && $argv < 20} {
 		set params [list count $argv]
 	} else {
-		set params [list since_id $twitter::last_msg]
+		set params [list since_id $::twitter::last_msg]
 	}
 
 	if {[catch {::twitlib::query $::twitlib::msgs_url $params GET} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Messages retrieval failed."
+		$::twitter::output_cmd "PRIVMSG $chan :Messages retrieval failed."
 		return
 	}
 
 	if {[llength $result] == 0} {
-		$twitter::output_cmd "PRIVMSG $chan :No new messages."
+		$::twitter::output_cmd "PRIVMSG $chan :No new messages."
 		return
 	}
 
 	foreach msg $result {
 		dict with msg {
-			if {$id > $twitter::last_msg} {
-				set twitter::last_msg $id
+			if {$id > $::twitter::last_msg} {
+				set ::twitter::last_msg $id
 			}
-			twitter::output $chan "\002From\002 $sender_screen_name: $text ($created_at)"
+			::twitter::output $chan "\002From\002 $sender_screen_name: $text ($created_at)"
 		}
 	}
 }
 
 # Send direct message to a user
-# TODO: replace lrange by a substring starting at the first space to fix 'unmatched open brace in list'
-#       issue if the tweet contains one { not balanced by a }.
-proc twitter::msg {nick uhost hand chan argv} {
+# TODO: replace lrange by a substring starting at the first space to fix
+# 'unmatched open brace in list' issue if the tweet contains one { not balanced
+# by a }.
+proc ::twitter::msg {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 	set argv [split $argv]
 
 	if {[llength $argv] < 2 || [string length [join [lrange $argv 1 end]]] > 140} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !twit_msg <username> <msg 140 chars or less>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_msg <username> <msg 140 chars or less>"
 		return
 	}
 
@@ -492,34 +492,34 @@ proc twitter::msg {nick uhost hand chan argv} {
 	set l [list screen_name $name text $msg]
 
 	if {[catch {::twitlib::query $::twitlib::msg_url $l} data]} {
-		$twitter::output_cmd "PRIVMSG $chan :Message to \002$name\002 failed ($data)! (Are they following you?)"
+		$::twitter::output_cmd "PRIVMSG $chan :Message to \002$name\002 failed ($data)! (Are they following you?)"
 	} else {
-		twitter::output $chan "Message sent."
+		::twitter::output $chan "Message sent."
 	}
 }
 
 # Send status update (tweet)
-proc twitter::tweet {nick uhost hand chan argv} {
+proc ::twitter::tweet {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	if {[string length $argv] > 140 || $argv == ""} {
-		$twitter::output_cmd "PRIVMSG $chan :Usage: !tweet <up to 140 characters>"
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !tweet <up to 140 characters>"
 		return
 	}
 
 	if {[catch {::twitlib::query $::twitlib::status_url [list status $argv]} result]} {
-		$twitter::output_cmd "PRIVMSG $chan :Tweet failed! ($argv) Error: $result."
+		$::twitter::output_cmd "PRIVMSG $chan :Tweet failed! ($argv) Error: $result."
 		return
 	}
 
 	set update_id [dict get $result id]
-	if {$update_id == $twitter::last_update} {
-		$twitter::output_cmd "PRIVMSG $chan :Tweet failed: Duplicate of tweet #$update_id. ($argv)"
+	if {$update_id == $::twitter::last_update} {
+		$::twitter::output_cmd "PRIVMSG $chan :Tweet failed: Duplicate of tweet #$update_id. ($argv)"
 		return
 	}
-	set twitter::last_update $update_id
+	set ::twitter::last_update $update_id
 
-	twitter::output $chan "Tweet sent."
+	::twitter::output $chan "Tweet sent."
 }
 
 # send timeline updates to all +twitter channels.
@@ -557,8 +557,8 @@ proc ::twitter::update {min hour day month year} {
 }
 
 # Get saved ids/state
-proc twitter::get_states {} {
-	if {[catch {open $twitter::state_file r} fid]} {
+proc ::twitter::get_states {} {
+	if {[catch {open $::twitter::state_file r} fid]} {
 		set ::twitlib::last_id 1
 		set ::twitter::last_update 1
 		set ::twitter::last_msg 1
@@ -585,11 +585,11 @@ proc twitter::get_states {} {
 }
 
 # Save states to file
-proc twitter::write_states {args} {
-	set fid [open $twitter::state_file w]
+proc ::twitter::write_states {args} {
+	set fid [open $::twitter::state_file w]
 	puts $fid $::twitlib::last_id
-	puts $fid $twitter::last_update
-	puts $fid $twitter::last_msg
+	puts $fid $::twitter::last_update
+	puts $fid $::twitter::last_msg
 	puts $fid $::twitlib::oauth_token
 	puts $fid $::twitlib::oauth_token_secret
 	puts $fid $::twitlib::oauth_consumer_key
@@ -601,7 +601,7 @@ proc twitter::write_states {args} {
 # Split long line into list of strings for multi line output to irc
 # Split into strings of ~max
 # by fedex
-proc twitter::split_line {max str} {
+proc ::twitter::split_line {max str} {
 	set last [expr {[string length $str] -1}]
 	set start 0
 	set end [expr {$max -1}]
