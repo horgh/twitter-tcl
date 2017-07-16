@@ -4,8 +4,9 @@
 # By fedex and horgh.
 #
 
-package require http
 package require htmlparse
+package require http
+package require inifile
 package require twitoauth
 package require twitlib
 
@@ -21,6 +22,13 @@ namespace eval ::twitter {
 	# Show tweet number in tweets shown in channels (1 = on, 0 = off).
 	# This is only really relevant if you are going to !retweet.
 	variable show_tweetid 0
+
+	# Path to the configuration file. The path is relative to the Eggdrop root
+	# directory. You can specify an absolute path.
+	#
+	# The configuration file currently contains a small number of the available
+	# options. Eventually we may move all options to it.
+	variable config_file twitter.conf
 
 	# Control what we poll. Each of these poll types is a separate API request
 	# every 'update_time' interval, so if you don't need/want one, then it is
@@ -53,6 +61,14 @@ namespace eval ::twitter {
 
 	variable last_update
 	variable last_msg
+
+	# Map of accounts you follow to the channels to show statuses in.
+	#
+	# If an account isn't in this map then its statuses go to all +twitter
+	# channels.
+	#
+	# Define this mapping in the config file.
+	variable account_to_channels [dict create]
 
 	# Channel command binds.
 	bind pub	o|o "!twit"             ::twitter::tweet
@@ -186,7 +202,7 @@ proc ::twitter::output {chan str} {
 	$::twitter::output_cmd "PRIVMSG $chan :$str"
 }
 
-# Format status updates and output
+# Format status update and output it to the channel.
 proc ::twitter::output_update {chan name id str} {
 	set out "\002$name\002: $str"
 	if {$::twitter::show_tweetid} {
@@ -528,15 +544,58 @@ proc ::twitter::tweet {nick uhost hand chan argv} {
 
 # send timeline updates to all +twitter channels.
 proc ::twitter::output_updates {updates} {
+	# Track what channels we output each status to. This is mainly useful for
+	# testing so we can examine the return value for where an update was sent.
+	set id_to_channels [dict create]
+
+	set all_channels [channels]
+
 	foreach status $updates {
-		foreach ch [channels] {
+		# Figure out what channels to output the status to.
+		#
+		# By default we output to all +twitter channels.
+		#
+		# However, if the account is mapped to particular channels, then output only
+		# to those. Note they must be +twitter as well.
+
+		set account [dict get $status screen_name]
+		set account [string trim $account]
+		set account [string tolower $account]
+		if {$account == ""} {
+			continue
+		}
+
+		set account_channels [list]
+		if {[dict exists $::twitter::account_to_channels $account]} {
+			set account_channels [dict get $::twitter::account_to_channels $account]
+		}
+
+		set output_channels $all_channels
+		if {[llength $account_channels] > 0} {
+			set output_channels $account_channels
+		}
+
+		foreach ch $output_channels {
+			if {[lsearch -exact -nocase $all_channels $ch] == -1} {
+				continue
+			}
 			if {![channel get $ch twitter]} {
 				continue
 			}
-			::twitter::output_update $ch [dict get $status screen_name] \
-				[dict get $status id] [dict get $status text]
+
+			set id [dict get $status id]
+			# Don't use $account here. We've done things like lowercase it.
+			::twitter::output_update $ch [dict get $status screen_name] $id \
+				[dict get $status text]
+
+			if {![dict exists $id_to_channels $id]} {
+				dict set id_to_channels $id [list]
+			}
+			dict lappend id_to_channels $id $ch
 		}
 	}
+
+	return $id_to_channels
 }
 
 # grab unseen status updates and output them to +twitter channels.
@@ -602,6 +661,53 @@ proc ::twitter::write_states {args} {
 	close $fid
 }
 
+proc ::twitter::load_config {} {
+	set ::twitter::account_to_channels [dict create]
+
+	if {[catch {::ini::open $::twitter::config_file} ini]} {
+		putlog "twitter.tcl: Error reading configuration file: $::twitter::config_file: $ini"
+		return
+	}
+
+	set mapping_section account-to-channel-mapping
+	if {![::ini::exists $ini $mapping_section]} {
+		::ini::close $ini
+		return
+	}
+
+	foreach key [::ini::keys $ini $mapping_section] {
+		set account [string trim $key]
+		if {[string length $account] == 0} {
+			continue
+		}
+		set account [string tolower $account]
+
+		# The ini is key/value. If you list the same key multiple times we get the
+		# first definition's value multiple times, so it is not useful and is
+		# probably not what you intended.
+		if {![dict exists $::twitter::account_to_channels $account]} {
+			dict set ::twitter::account_to_channels $account [list]
+		} else {
+			putlog "twitter.tcl: Error: $account is in $mapping_section twice"
+			continue
+		}
+
+		set channels_string [::ini::value $ini $mapping_section $key]
+		set channels [split $channels_string ,]
+		foreach channel $channels {
+			set channel [string trim $channel]
+			if {[string length $channel] == 0} {
+				continue
+			}
+			set channel [string tolower $channel]
+
+			dict lappend ::twitter::account_to_channels $account $channel
+		}
+	}
+
+	::ini::close $ini
+}
+
 # Split long line into list of strings for multi line output to irc.
 #
 # Split into strings of ~max.
@@ -626,6 +732,7 @@ proc ::twitter::split_line {max str} {
 }
 
 ::twitter::get_states
+::twitter::load_config
 ::twitter::set_update_time $::twitter::update_time
 
 putlog "twitter.tcl (c) fedex and horgh"

@@ -1,0 +1,16 @@
+[account-to-channel-mapping]
+; Here you can set what channels tweets from accounts you follow to go.
+;
+; If an account is not listed here then its tweets go to all +twitter channels.
+; This is a way to limit specific accounts to specific channels.
+;
+; Any channel listed here must also be +twitter for tweets to go to it.
+;
+; Format:
+; screen_name1 = #channel1,#channel2
+; screen_name2 = #channel3
+;
+; With the above example if you are these following 3 accounts screen_name1,
+; screen_name2, screen_name3 then tweets from the first will show in #channel1
+; and #channel2, tweets from the second will show in #channel 3, and tweets from
+; the last will show in all channels (that are +twitter).

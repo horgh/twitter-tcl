@@ -3,6 +3,17 @@
 # Program to run some automated tests
 #
 
+# Dummy some Eggdrop commands. We just want them to not error.
+proc bind {a b c d} {}
+proc setudef {a b} {}
+proc putlog {a} {
+	puts "putlog said: $a"
+}
+proc putserv {a} {
+	puts "putserv said: $a"
+}
+proc binds {a} {}
+
 # parameter: json_file: file with json payload of statuses.
 #   home statuses timeline for example.
 proc ::get_test_statuses {json_file} {
@@ -57,6 +68,7 @@ proc ::include_libraries {} {
 
 	package require json
 	package require twitlib
+	source "$parent/twitter.tcl"
 }
 
 proc ::main {} {
@@ -64,11 +76,203 @@ proc ::main {} {
 
 	set json_file [::get_args]
 
+	set success 1
+
 	if {![::get_test_statuses $json_file]} {
+		puts "get_test_statuses failed"
+		set success 0
+	}
+
+	if {![::test_load_config]} {
+		puts "test_load_config failed"
+		set success 0
+	}
+
+	if {![::test_output_updates]} {
+		puts "test_output_updates failed"
+		set success 0
+	}
+
+	return $success
+}
+
+proc ::test_load_config {} {
+	set tmpfile /tmp/twitter-tests.bin
+	file delete $tmpfile
+	set ::twitter::config_file $tmpfile
+
+	# Test file not existing.
+	::twitter::load_config
+	if {[dict size $::twitter::account_to_channels] != 0} {
+		puts "load_config when the file does not exist unexpectedly had non-zero mapping"
 		return 0
 	}
 
+	# Test cases where the file exists.
+	set tests [list \
+		[dict create \
+			description "empty file" \
+			input "" \
+			expected [dict create] \
+		] \
+		[dict create \
+			description "empty section" \
+			input "\[account-to-channel-mapping\]\n" \
+			expected [dict create] \
+		] \
+		[dict create \
+			description "empty section but with comments" \
+			input "\[account-to-channel-mapping\]\n; test comment\n; another\n" \
+			expected [dict create] \
+		] \
+		[dict create \
+			description "multiple accounts set up" \
+			input "\[account-to-channel-mapping\]\n; test comment\n; another\naccount1 = #chan1\naccount2 = #chan1,#chan2, #chaN3\naccounT1=#chan4\n; another account\nAccount5=#chan5" \
+			expected [dict create \
+				account1 [list #chan1] \
+				account2 [list #chan1 #chan2 #chan3] \
+				account5 [list #chan5] \
+			] \
+		] \
+	]
+
+	foreach test $tests {
+		set fh [open $tmpfile w]
+		if {[string length [dict get $test input]] > 0} {
+			puts -nonewline $fh [dict get $test input]
+		}
+		close $fh
+
+		::twitter::load_config
+
+		set got $::twitter::account_to_channels
+		set expected [dict get $test expected]
+
+		if {[dict size $got] != [dict size $expected]} {
+			puts "Test failed: [dict get $test description]: Different number of keys"
+			return 0
+		}
+
+		foreach key [dict keys $expected] {
+			if {![dict exists $got $key]} {
+				puts "Test failed: [dict get $test description]: Key $key is missing"
+				return 0
+			}
+
+			set got_chans [dict get $got $key]
+			set expected_chans [dict get $expected $key]
+			if {$got_chans != $expected_chans} {
+				puts "Test failed: [dict get $test description]: Key $key is '$got_chans', wanted '$expected_chans'"
+				return 0
+			}
+		}
+	}
+
 	return 1
+}
+
+proc ::test_output_updates {} {
+	set tests [list \
+		[dict create \
+			description "no mappings, no channels +twitter" \
+			channels [list #one #two] \
+			channels_plustwitter [list] \
+			mappings [dict create] \
+			statuses [list \
+				[dict create screen_name acct1 id 1 text hi] \
+			] \
+			expected [dict create] \
+		] \
+		[dict create \
+			description "no mappings, all channels +twitter" \
+			channels [list #one #two] \
+			channels_plustwitter [list #one #two] \
+			mappings [dict create] \
+			statuses [list \
+				[dict create screen_name acct1 id 1 text hi] \
+			] \
+			expected [dict create 1 [list #one #two]] \
+		] \
+		[dict create \
+			description "mapping present but empty, all channels +twitter" \
+			channels [list #one #two] \
+			channels_plustwitter [list #one #two] \
+			mappings [dict create acct1 [list]] \
+			statuses [list \
+				[dict create screen_name acct1 id 1 text hi] \
+			] \
+			expected [dict create 1 [list #one #two]] \
+		] \
+		[dict create \
+			description "mapping present, one channel that is +twitter" \
+			channels [list #one #two] \
+			channels_plustwitter [list #one #two] \
+			mappings [dict create acct1 [list #one]] \
+			statuses [list \
+				[dict create screen_name acct1 id 1 text hi] \
+			] \
+			expected [dict create 1 [list #one]] \
+		] \
+		[dict create \
+			description "mapping present, two channels that are +twitter, one isn't" \
+			channels [list #one #two #three] \
+			channels_plustwitter [list #one #two] \
+			mappings [dict create acct1 [list #one #two #three]] \
+			statuses [list \
+				[dict create screen_name acct1 id 1 text hi] \
+			] \
+			expected [dict create 1 [list #one #two]] \
+		] \
+	]
+
+	foreach test $tests {
+		global channels_result
+		set channels_result [dict get $test channels]
+
+		global channel_to_plustwitter
+		set channel_to_plustwitter [dict create]
+		foreach ch [dict get $test channels_plustwitter] {
+			dict set channel_to_plustwitter $ch 1
+		}
+
+		set ::twitter::account_to_channels [dict get $test mappings]
+
+		set got [::twitter::output_updates [dict get $test statuses]]
+
+		foreach key [dict keys [dict get $test expected]] {
+			if {![dict exists $got $key]} {
+				puts "Test failed: [dict get $test description]: Key $key does not exist"
+				return 0
+			}
+
+			set got_channels [dict get $got $key]
+			set expected_channels [dict get $test expected $key]
+
+			if {$got_channels != $expected_channels} {
+				puts "Test failed: [dict get $test description]: Key $key is $got_channels, wanted $expected_channels"
+				return 0
+			}
+		}
+	}
+
+	return 1
+}
+
+# Dummy the eggdrop function channels.
+set channels_result [list]
+proc channels {} {
+	global channels_result
+	return $channels_result
+}
+
+# Dummy the eggdrop function channel
+set channel_to_plustwitter [dict create]
+proc channel {command channel flag} {
+	global channel_to_plustwitter
+	if {[dict exists $channel_to_plustwitter $channel]} {
+		return 1
+	}
+	return 0
 }
 
 if {![::main]} {
