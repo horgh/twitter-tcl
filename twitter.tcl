@@ -98,6 +98,8 @@ namespace eval ::twitter {
 	# Save our state on save event.
 	bind evnt	-|- "save" ::twitter::write_states
 
+	bind dcc -|- twitter-status ::twitter::dcc_status
+
 	# Add channel flag +/-twitter.
 	setudef flag twitter
 }
@@ -708,6 +710,24 @@ proc ::twitter::load_config {} {
 	::ini::close $ini
 }
 
+proc ::twitter::write_status_to_log {} {
+	putlog "twitter.tcl: Config file is $::twitter::config_file"
+
+	putlog "twitter.tcl: Mapped [dict size $::twitter::account_to_channels] accounts to specific channels"
+	foreach account [dict keys $::twitter::account_to_channels] {
+		set channels {}
+		foreach c [dict get $::twitter::account_to_channels $account] {
+			if {$channels == ""} {
+				append channels $c
+			} else {
+				append channels ", $c"
+			}
+		}
+		set channel_count [llength [dict get $::twitter::account_to_channels $account]]
+		putlog "twitter.tcl: $account shows in $channel_count channels: $channels"
+	}
+}
+
 # Split long line into list of strings for multi line output to irc.
 #
 # Split into strings of ~max.
@@ -731,8 +751,14 @@ proc ::twitter::split_line {max str} {
 	return $lines
 }
 
+proc ::twitter::dcc_status {handle idx text} {
+	::twitter::write_status_to_log
+	return 1
+}
+
 ::twitter::get_states
 ::twitter::load_config
 ::twitter::set_update_time $::twitter::update_time
+::twitter::write_status_to_log
 
 putlog "twitter.tcl (c) fedex and horgh"
