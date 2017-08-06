@@ -716,8 +716,13 @@ proc ::twitter::write_states {args} {
 proc ::twitter::load_config {} {
 	set ::twitter::account_to_channels [dict create]
 
-	if {[catch {::ini::open $::twitter::config_file} ini]} {
-		putlog "twitter.tcl: Error reading configuration file: $::twitter::config_file: $ini"
+	if {![file exists $::twitter::config_file]} {
+		putlog "twitter.tcl: Config file $::twitter::config_file does not exist, skipping"
+		return
+	}
+
+	if {[catch {::ini::open $::twitter::config_file r} ini]} {
+		putlog "twitter.tcl: Error opening configuration file: $::twitter::config_file: $ini"
 		return
 	}
 
