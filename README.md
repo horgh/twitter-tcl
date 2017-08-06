@@ -86,10 +86,12 @@ scripts to see what else is available.
     the option `followers_limit`)
   - `!retweet` - Retweet
   - `!update_interval` - Change the time between status fetches
-  * `!twit_request_token <consumer_key> <consumer_secret>`
+  - `!twitstatus` - Show bot's Twitter status. Currently this shows its
+    screen name.
+  - `!twit_request_token <consumer_key> <consumer_secret>`
     - Initiate authentication. This is step one of the authentication
       process.
-  * `!twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>`
+  - `!twit_access_token <oauth_token> <oauth_token_secret> <PIN from authentication url of !twit_request_token>`
     - Complete authentication. This is step two of the authentication
       process.
 
