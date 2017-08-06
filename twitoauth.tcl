@@ -4,8 +4,8 @@
 # By horgh.
 #
 
-package require http
 package require base64
+package require http
 package require sha1
 package require tls
 
@@ -62,7 +62,7 @@ proc ::twitoauth::get_access_token {consumer_key consumer_secret oauth_token oau
 	return [::twitoauth::params_to_dict $result]
 }
 
-# after the first two steps succeed, we now can make AI requests to twitter.
+# after the first two steps succeed, we now can make API requests to twitter.
 # query_dict is POST request to twitter as before, key:value pairing (dict)
 # oauth_token, oauth_token_secret are from get_access_token
 proc ::twitoauth::query_api {url consumer_key consumer_secret method oauth_token oauth_token_secret query_dict} {
