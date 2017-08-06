@@ -245,13 +245,17 @@ proc ::twitter::retweet {nick uhost hand chan argv} {
 proc ::twitter::follow {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
-	if {[string length $argv] < 1} {
+	set argv [string trim $argv]
+	if {$argv == ""} {
 		$::twitter::output_cmd "PRIVMSG $chan :Usage: !follow <screen name>"
 		return
 	}
+	set screen_name $argv
 
-	if {[catch {::twitlib::query $::twitlib::follow_url [list screen_name $argv]} result]} {
-		$::twitter::output_cmd "PRIVMSG $chan :Twitter failed or already friends with $argv!"
+	set query [list screen_name $screen_name]
+	if {[catch {::twitlib::query $::twitlib::follow_url $query} result]} {
+		$::twitter::output_cmd "PRIVMSG $chan :Unable to follow or already friends with $argv!"
+		putlog "Unable to follow or already friends with $argv: $result"
 		return
 	}
 
