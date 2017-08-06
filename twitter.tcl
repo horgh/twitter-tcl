@@ -91,6 +91,8 @@ namespace eval ::twitter {
 	bind pub	o|o "!retweet"          ::twitter::retweet
 	bind pub	o|o "!update_interval"  ::twitter::update_interval
 
+	bind pub  -|- !twitstatus         ::twitter::status
+
 	# OAuth channel command binds.
 	bind pub	o|o "!twit_request_token" ::twitter::oauth_request
 	bind pub	o|o "!twit_access_token"  ::twitter::oauth_access
@@ -195,6 +197,11 @@ proc ::twitter::update_interval {nick uhost hand chan argv} {
 	::twitter::set_update_time $argv
 
 	$::twitter::output_cmd "PRIVMSG $chan :Update interval set to $argv minute(s)."
+}
+
+proc ::twitter::status {nick uhost hand chan argv} {
+	set screen_name [::twitlib::get_my_screen_name]
+	$::twitter::output_cmd "PRIVMSG $chan :I'm @$screen_name."
 }
 
 # Output decoded/split string to given channel

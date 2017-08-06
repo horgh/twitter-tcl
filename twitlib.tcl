@@ -28,6 +28,8 @@ namespace eval ::twitlib {
 	variable oauth_token_secret {}
 
 	# Twitter API URLs
+	# GET account/settings to get info about your account.
+	variable account_settings_url https://api.twitter.com/1.1/account/settings.json
 	# POST status_url to create a tweet.
 	variable status_url       https://api.twitter.com/1.1/statuses/update.json
 	# GET home_url to retrieve tweets by users you follow/yourself.
@@ -83,6 +85,19 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 
 	# apparently we'll get back unicode
 	return [::json::json2dict $data]
+}
+
+proc ::twitlib::get_account_settings {} {
+	set result [::twitlib::query $::twitlib::account_settings_url {} GET]
+	return $result
+}
+
+proc ::twitlib::get_my_screen_name {} {
+	set settings [::twitlib::get_account_settings]
+	if {![dict exists $settings screen_name]} {
+		return ""
+	}
+	return [dict get $settings screen_name]
 }
 
 # take status dict from a timeline and reformats it if necessary.
