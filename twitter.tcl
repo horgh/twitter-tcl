@@ -246,25 +246,63 @@ proc ::twitter::follow {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
 	set argv [string trim $argv]
-	if {$argv == ""} {
-		$::twitter::output_cmd "PRIVMSG $chan :Usage: !follow <screen name>"
+	set args [split $argv " "]
+	if {[llength $args] == 0} {
+		::twitter::follow_usage $chan
 		return
 	}
-	set screen_name $argv
+	set screen_name [string tolower [lindex $args 0]]
+
+	set channels [list]
+	if {[llength $args] > 1} {
+		foreach channel [lrange $args 1 end] {
+			set channel [string tolower $channel]
+
+			if {[string index $channel 0] != "#"} {
+				::twitter::follow_usage $chan
+				return
+			}
+
+			if {[lsearch -exact $channels $channel] != -1} {
+				continue
+			}
+
+			lappend channels $channel
+		}
+	}
 
 	set query [list screen_name $screen_name]
 	if {[catch {::twitlib::query $::twitlib::follow_url $query} result]} {
-		$::twitter::output_cmd "PRIVMSG $chan :Unable to follow or already friends with $argv!"
-		putlog "Unable to follow or already friends with $argv: $result"
+		$::twitter::output_cmd "PRIVMSG $chan :Unable to follow or already friends with $screen_name!"
+		putlog "Unable to follow or already friends with $screen_name: $result"
 		return
 	}
 
 	if {[dict exists $result error]} {
-		::twitter::output $chan "Follow failed ($argv): [dict get $result error]"
+		::twitter::output $chan "Follow failed ($screen_name): [dict get $result error]"
 		return
 	}
 
 	::twitter::output $chan "Now following [dict get $result screen_name]!"
+
+	# Update mappings and save config no matter what (even if there is no
+	# mapping). If they specified no channels then this lets us reset mapping to
+	# all channels if the account was previously mapped.
+
+	if {[llength $channels] == 0} {
+		if {[dict exists $::twitter::account_to_channels $screen_name]} {
+			dict unset ::twitter::account_to_channels $screen_name
+		}
+	} else {
+		dict set ::twitter::account_to_channels $screen_name $channels
+	}
+
+	::twitter::save_config
+}
+
+proc ::twitter::follow_usage {chan} {
+	$::twitter::output_cmd "PRIVMSG $chan :Usage: !follow <screen name> \[#channel1 #channel2 ...\]"
+	$::twitter::output_cmd "PRIVMSG $chan :If you specify channel(s) then the screen name's statuses will only show in those channels. This updates the config. To show them in all channels, do not specify any here."
 }
 
 # Unfollow a user (by screen name)
@@ -763,6 +801,42 @@ proc ::twitter::load_config {} {
 	}
 
 	::ini::close $ini
+}
+
+proc ::twitter::save_config {} {
+	# r+ is read/write
+	if {[catch {::ini::open $::twitter::config_file r+} ini]} {
+		putlog "twitter.tcl: Error opening configuration file: $::twitter::config_file: $ini"
+		return
+	}
+
+	set mapping_section account-to-channel-mapping
+
+	# Clear out the current mappings. Note that comments in the section do not
+	# reliably stick around. They seem to stick around if the comment is above an
+	# account that we have after rewriting the file. But if the comment is above a
+	# key that we lose a mapping for all together then we lose the comment as
+	# well.
+	if {[::ini::exists $ini $mapping_section]} {
+		foreach key [ini::keys $ini $mapping_section] {
+			::ini::delete $ini $mapping_section $key
+		}
+	}
+
+	set account_count 0
+	foreach account [dict keys $::twitter::account_to_channels] {
+		set channels [dict get $::twitter::account_to_channels $account]
+		if {[llength $channels] == 0} {
+			continue
+		}
+		set channels_csv [join $channels ,]
+		::ini::set $ini $mapping_section $account $channels_csv
+		incr account_count
+	}
+
+	::ini::commit $ini
+	::ini::close $ini
+	putlog "twitter.tcl: Wrote $::twitter::config_file ($account_count accounts)"
 }
 
 proc ::twitter::write_status_to_log {} {

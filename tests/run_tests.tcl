@@ -88,6 +88,11 @@ proc ::main {} {
 		set success 0
 	}
 
+	if {![::test_save_config]} {
+		puts "test_save_config failed"
+		set success 0
+	}
+
 	if {![::test_output_updates]} {
 		puts "test_output_updates failed"
 		set success 0
@@ -174,6 +179,77 @@ proc ::test_load_config {} {
 				return 0
 			}
 		}
+	}
+
+	return 1
+}
+
+proc ::test_save_config {} {
+	set tests [list \
+		[dict create \
+			description "no accounts" \
+			map [dict create] \
+			content_before "" \
+			content_after "" \
+		] \
+		[dict create \
+			description "no accounts, wipe out old" \
+			map [dict create] \
+			content_before "; a comment\n\[account-to-channel-mapping\]\n; another comment\n" \
+			content_after "; a comment\n\n\[account-to-channel-mapping\]\n" \
+		] \
+		[dict create \
+			description "one account, no change" \
+			map [dict create \
+				account1 [list #chan1] \
+			] \
+			content_before "; a comment\n\[account-to-channel-mapping\]\n; another comment\naccount1 = #chan1\n" \
+			content_after "; a comment\n\n\[account-to-channel-mapping\]\n; another comment\naccount1=#chan1\n" \
+		] \
+		[dict create \
+			description "one account, removes old" \
+			map [dict create \
+				account1 [list #chan1] \
+			] \
+			content_before "; a comment\n\[account-to-channel-mapping\]\n; another comment\naccount2 = #chan2\naccount3=#chan3" \
+			content_after "; a comment\n\n\[account-to-channel-mapping\]\naccount1=#chan1\n" \
+		] \
+		[dict create \
+			description "multiple accounts" \
+			map [dict create \
+				account1 [list #chan1 #chan2] \
+				account2 [list #chan3 #chan4] \
+			] \
+			content_before "; a comment\n\[account-to-channel-mapping\]\n; another comment\naccount2 = #chan2\naccount3=#chan3" \
+			content_after "; a comment\n\n\[account-to-channel-mapping\]\naccount1=#chan1,#chan2\n; another comment\naccount2=#chan3,#chan4\n" \
+		] \
+	]
+
+	set tmpfile /tmp/twitter-tests.bin
+	if {[file exists $tmpfile]} {
+		file delete $tmpfile
+	}
+	set ::twitter::config_file $tmpfile
+
+	foreach test $tests {
+		set ::twitter::account_to_channels [dict get $test map]
+
+		set fh [open $tmpfile w]
+		puts -nonewline $fh [dict get $test content_before]
+		close $fh
+
+		::twitter::save_config
+
+		set fh [open $tmpfile r]
+		set content [read -nonewline $fh]
+		close $fh
+
+		if {$content != [dict get $test content_after]} {
+			puts "Test failed: [dict get $test description]: Content is $content, wanted [dict get $test content_after]"
+			return 0
+		}
+
+		puts "TEST: [dict get $test description]: content is $content"
 	}
 
 	return 1
