@@ -72,34 +72,34 @@ namespace eval ::twitter {
 	variable account_to_channels [dict create]
 
 	# Channel command binds.
-	bind pub	o|o "!twit"             ::twitter::tweet
-	bind pub	o|o "!tweet"            ::twitter::tweet
-	bind pub	o|o "!twit_msg"         ::twitter::msg
-	bind pub	-|- "!twit_trends"      ::twitter::trends_global
-	bind pub	o|o "!follow"           ::twitter::follow
-	bind pub	o|o "!unfollow"         ::twitter::unfollow
-	bind pub	-|- "!twit_updates"     ::twitter::updates
-	bind pub	-|- "!twit_msgs"        ::twitter::msgs
-	bind pub	-|- "!twit_search"      ::twitter::search
-	bind pub	-|- "!twit_searchusers" ::twitter::search_users
+	bind pub o|o "!twit"             ::twitter::tweet
+	bind pub o|o "!tweet"            ::twitter::tweet
+	bind pub o|o "!twit_msg"         ::twitter::msg
+	bind pub -|- "!twit_trends"      ::twitter::trends_global
+	bind pub o|o "!follow"           ::twitter::follow
+	bind pub o|o "!unfollow"         ::twitter::unfollow
+	bind pub -|- "!twit_updates"     ::twitter::updates
+	bind pub -|- "!twit_msgs"        ::twitter::msgs
+	bind pub -|- "!twit_search"      ::twitter::search
+	bind pub -|- "!twit_searchusers" ::twitter::search_users
 
 	variable followers_trigger !followers
-	bind pub	-|- $followers_trigger  ::twitter::followers
+	bind pub -|- $followers_trigger  ::twitter::followers
 
 	variable following_trigger !following
-	bind pub	-|- $following_trigger  ::twitter::following
+	bind pub -|- $following_trigger  ::twitter::following
 
-	bind pub	o|o "!retweet"          ::twitter::retweet
-	bind pub	o|o "!update_interval"  ::twitter::update_interval
+	bind pub o|o "!retweet"          ::twitter::retweet
+	bind pub o|o "!update_interval"  ::twitter::update_interval
 
-	bind pub  -|- !twitstatus         ::twitter::status
+	bind pub -|- !twitstatus         ::twitter::status
 
 	# OAuth channel command binds.
-	bind pub	o|o "!twit_request_token" ::twitter::oauth_request
-	bind pub	o|o "!twit_access_token"  ::twitter::oauth_access
+	bind pub o|o "!twit_request_token" ::twitter::oauth_request
+	bind pub o|o "!twit_access_token"  ::twitter::oauth_access
 
 	# Save our state on save event.
-	bind evnt	-|- "save" ::twitter::write_states
+	bind evnt -|- "save" ::twitter::write_states
 
 	bind dcc -|- twitter-status ::twitter::dcc_status
 
