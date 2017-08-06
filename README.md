@@ -25,9 +25,9 @@ The scripts/libraries in this repository are:
 
   - Load `twitoauth.tcl`, `twitlib.tcl`, and `twitter.tcl` on to your bot.
     You should ensure they load in this order as the first two are
-    libraries that the latter depends on. Like other Eggdrop scripts, you
-    can place them in a scripts subdirectory, and source them as usual in
-    your configuration file.
+    libraries that the last depends on. Like other Eggdrop scripts, you can
+    place them in a scripts subdirectory, and source them as usual in your
+    configuration file.
   - Review the variables at the top of `twitlib.tcl` and `twitter.tcl`. You
     can change the options there if you like. The defaults are probably
     okay.
@@ -101,7 +101,10 @@ scripts to see what else is available.
   - How do I control what channels the bot shows tweets in?
     - You can set multiple channels that the bot outputs and accepts
       commands on by setting each channel `.chanset #channel +twitter`.
-  - Why isn't the bot responding to the `!commands`?
+    - If you want to show tweets from particular accounts you show in
+      particular channels, you can create a `twitter.conf` to map screen
+      names to channels. There is an example in `twitter.conf.sample`.
+  - Why isn't the bot responding to `!commands`?
     - First make sure the channel is set `+twitter`.
     - If it is, then you may not be recognized as +o by the bot. Many
       commands require that the bot recognizes you as +o. This is not the
@@ -114,7 +117,8 @@ scripts to see what else is available.
       the setup points above. TL;DR: Issue `!twit_request_token` in a channel
       set `+twitter`. The bot should answer you.
   - Why do no status updates show?
-    - Ensure that `poll_home_timeline` at the top of `twitter.tcl` is set 1.
+    - Ensure that `poll_home_timeline` at the top of `twitter.tcl` is set
+      to 1. This is the default.
   - How do I change the Twitter account used by the bot?
     - Call `!twit_request_token` again. This restarts the authentication
       process. Make sure you are logged into Twitter on the account you
