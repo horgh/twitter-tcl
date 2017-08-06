@@ -93,12 +93,20 @@ proc ::main {} {
 		set success 0
 	}
 
+	if {$success} {
+		puts "All tests passed"
+	} else {
+		puts "Some tests failed"
+	}
+
 	return $success
 }
 
 proc ::test_load_config {} {
 	set tmpfile /tmp/twitter-tests.bin
-	file delete $tmpfile
+	if {[file exists $tmpfile]} {
+		file delete $tmpfile
+	}
 	set ::twitter::config_file $tmpfile
 
 	# Test file not existing.
@@ -129,7 +137,7 @@ proc ::test_load_config {} {
 			description "multiple accounts set up" \
 			input "\[account-to-channel-mapping\]\n; test comment\n; another\naccount1 = #chan1\naccount2 = #chan1,#chan2, #chaN3\naccounT1=#chan4\n; another account\nAccount5=#chan5" \
 			expected [dict create \
-				account1 [list #chan1] \
+				account1 [list #chan4] \
 				account2 [list #chan1 #chan2 #chan3] \
 				account5 [list #chan5] \
 			] \
