@@ -101,7 +101,7 @@ scripts to see what else is available.
       commands on by setting each channel `.chanset #channel +twitter`.
   - Why isn't the bot responding to the `!commands`?
     - First make sure the channel is set `+twitter`.
-    - If it is, then you may not be recognized as +o by the bot. These
+    - If it is, then you may not be recognized as +o by the bot. Many
       commands require that the bot recognizes you as +o. This is not the
       same as having operator status in the channel having operator status
       in the channel. It means you must be recognized as a user with +o
@@ -119,3 +119,11 @@ scripts to see what else is available.
       want and visit the authentication URL (or login to the account you
       want at this URL) and do `!twit_access_token` as when you initially
       set up the bot.
+  - Why do I see errors like "Read-only application cannot POST" when
+    trying to tweet or follow?
+    - This means Twitter thinks your bot's credentials do not have write
+      permission. Ensure that the application you set up for the bot is set
+      to have read and write permissions. Also ensure that the key and
+      secret you use in `!twit_request_token` match after checking/updating
+      the write permission. You should start over from
+      `!twit_request_token`.
