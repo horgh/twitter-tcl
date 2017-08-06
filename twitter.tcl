@@ -50,8 +50,9 @@ namespace eval ::twitter {
 	#
 
 	# Number of followers to output when listing followers. The API can return a
-	# maximum of 5000 at a time but you probably don't want to spam channels with
-	# that many!
+	# maximum of 200 at a time but you probably don't want to spam channels with
+	# that many! If we wanted to see all of them then it is possible to make
+	# multiple API calls using the cursor parameter to page through.
 	variable followers_limit 50
 
 	# This file holds state information (id of last seen tweet, oauth keys).
@@ -357,18 +358,29 @@ proc ::twitter::search_users {nick uhost hand chan argv} {
 	}
 }
 
-# Return latest followers (up to 100)
+# Look up and output the users following an account (the most recent).
+#
+# If no account is given, we output who is following us.
+#
+# We output at most $::twitter::followers_limit screen names.
 proc ::twitter::followers {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
+
+	set argv [string trim $argv]
 	set args [split $argv " "]
-	if {[llength $args] != 1} {
-		::twitter::output $chan "Usage: $::twitter::followers_trigger <screen name>"
+	if {[llength $args] > 1} {
+		::twitter::output $chan "Usage: $::twitter::followers_trigger \[screen name\] (defaults to me)"
 		return
 	}
-	set screen_name [lindex $args 0]
+	set screen_name {}
+	if {[llength $args] == 1} {
+		set screen_name [lindex $args 0]
+	}
 
-	set query_list [list screen_name $screen_name follows_count \
-		$::twitter::followers_limit]
+	set query_list [list count $::twitter::followers_limit]
+	if {$screen_name != ""} {
+			lappend query_list screen_name $screen_name
+	}
 	if {[catch {::twitlib::query $::twitlib::followers_url $query_list GET} \
 		result]} {
 		::twitter::output $chan "Error fetching followers."
@@ -376,60 +388,87 @@ proc ::twitter::followers {nick uhost hand chan argv} {
 		return
 	}
 
-	# order to: first following -> last following
+	# Sort: First following -> last following.
 	set users [lreverse [dict get $result users]]
 
+	# Format.
 	set followers []
 	foreach user $users {
-		set screen_name [dict get $user screen_name]
-		append followers "$screen_name "
+		append followers "[dict get $user screen_name] "
 	}
 	set followers [string trim $followers]
 
 	foreach line [::twitter::split_line $::twitter::line_length $followers] {
-		::twitter::output $chan "Followers: $followers"
+		if {$screen_name == ""} {
+			::twitter::output $chan "I have followers: $followers"
+		} else {
+			::twitter::output $chan "$screen_name has followers: $followers"
+		}
 	}
 
 	if {[llength $users] == 0} {
-		::twitter::output $chan "$screen_name has no followers."
+		if {$screen_name == ""} {
+			::twitter::output $chan "I have no followers."
+		} else {
+			::twitter::output $chan "$screen_name has no followers."
+		}
 	}
 }
 
-# Returns the latest users following acct is following (up to 100)
+# Look up and output the users an account is following (the most recent).
+#
+# If no account is given, we output who we are following.
+#
+# We output at most $::twitter::followers_limit screen names.
 proc ::twitter::following {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
+
+	set argv [string trim $argv]
 	set args [split $argv " "]
-	if {[llength $args] != 1} {
-		::twitter::output $chan "Usage: $::twitter::following_trigger <screen name>"
+	if {[llength $args] > 1} {
+		::twitter::output $chan "Usage: $::twitter::following_trigger \[screen name\] (defaults to me)"
 		return
 	}
-	set screen_name [lindex $args 0]
+	set screen_name {}
+	if {[llength $args] == 1} {
+		set screen_name [lindex $args 0]
+	}
 
-	set query_list [list screen_name $screen_name follows_count \
-		$::twitter::followers_limit]
+	set query_list [list count $::twitter::followers_limit]
+	if {$screen_name != ""} {
+			lappend query_list screen_name $screen_name
+	}
 	if {[catch {::twitlib::query $::twitlib::following_url $query_list GET} \
 		result]} {
-		::twitter::output $chan "Error fetching friends."
-		putlog "Error fetching friends: $result"
+		::twitter::output $chan "Error looking Twitter friends."
+		putlog "Error looking up Twitter friends: $result"
 		return
 	}
 
-	# order to: first following -> last following
+	# Sort: First following -> last following.
 	set users [lreverse [dict get $result users]]
 
+	# Format output.
 	set following ""
 	foreach user $users {
-		set screen_name [dict get $user screen_name]
-		append following "$screen_name "
+		append following "[dict get $user screen_name] "
 	}
 	set following [string trim $following]
 
 	foreach line [::twitter::split_line $::twitter::line_length $following] {
-		::twitter::output $chan "Following: $line"
+		if {$screen_name == ""} {
+			::twitter::output $chan "I'm following: $line"
+		} else {
+			::twitter::output $chan "$screen_name is following: $line"
+		}
 	}
 
 	if {[llength $users] == 0} {
-		::twitter::output $chan "$screen_name is not following anyone."
+		if {$screen_name == ""} {
+			::twitter::output $chan "I'm not following anyone."
+		} else {
+			::twitter::output $chan "$screen_name is not following anyone."
+		}
 	}
 }
 
