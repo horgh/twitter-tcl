@@ -147,6 +147,15 @@ proc ::test_load_config {} {
 				account5 [list #chan5] \
 			] \
 		] \
+		[dict create \
+			description "multiple accounts set up, extra stuff in file outside of section" \
+			input "junk=#hi\n\[account-to-channel-mapping\]\n; test comment\n; another\naccount1 = #chan1\naccount2 = #chan1,#chan2, #chaN3\naccounT1=#chan4\n; another account\nAccount5=#chan5" \
+			expected [dict create \
+				account1 [list #chan4] \
+				account2 [list #chan1 #chan2 #chan3] \
+				account5 [list #chan5] \
+			] \
+		] \
 	]
 
 	foreach test $tests {
@@ -248,8 +257,6 @@ proc ::test_save_config {} {
 			puts "Test failed: [dict get $test description]: Content is $content, wanted [dict get $test content_after]"
 			return 0
 		}
-
-		puts "TEST: [dict get $test description]: content is $content"
 	}
 
 	return 1
