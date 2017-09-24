@@ -336,7 +336,12 @@ proc ::twitter::updates {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {::twitlib::query $::twitlib::home_url [list count $argv] GET} result]} {
+	set params [list \
+		count $argv \
+		tweet_mode extended \
+	]
+
+	if {[catch {::twitlib::query $::twitlib::home_url $params GET} result]} {
 		$::twitter::output_cmd "PRIVMSG $chan :Retrieval error: $result."
 		return
 	}
@@ -346,10 +351,12 @@ proc ::twitter::updates {nick uhost hand chan argv} {
 		return
 	}
 
+	set result [::twitlib::fix_statuses $result]
+
 	set result [lreverse $result]
 	foreach status $result {
 		dict with status {
-			::twitter::output_update $chan [dict get $user screen_name] $id $text
+			::twitter::output_update $chan [dict get $user screen_name] $id $full_text
 		}
 	}
 }
@@ -363,7 +370,13 @@ proc ::twitter::search {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {::twitlib::query $::twitlib::search_url [list q $argv count 4] GET} data]} {
+	set params [list \
+		q $argv \
+		count 4 \
+		tweet_mode extended \
+	]
+
+	if {[catch {::twitlib::query $::twitlib::search_url $params GET} data]} {
 		$::twitter::output_cmd "PRIVMSG $chan :Search error ($data)"
 		return
 	}
@@ -374,10 +387,11 @@ proc ::twitter::search {nick uhost hand chan argv} {
 	}
 
 	set statuses [dict get $data statuses]
+	set statuses [::twitlib::fix_statuses $statuses]
 	set count 0
 	foreach status $statuses {
 		set user [dict get $status user]
-		::twitter::output $chan "\002[dict get $user screen_name]\002: [dict get $status text]"
+		::twitter::output $chan "\002[dict get $user screen_name]\002: [dict get $status full_text]"
 	}
 }
 
@@ -676,7 +690,7 @@ proc ::twitter::output_updates {updates} {
 			set id [dict get $status id]
 			# Don't use $account here. We've done things like lowercase it.
 			::twitter::output_update $ch [dict get $status screen_name] $id \
-				[dict get $status text]
+				[dict get $status full_text]
 
 			if {![dict exists $id_to_channels $id]} {
 				dict set id_to_channels $id [list]

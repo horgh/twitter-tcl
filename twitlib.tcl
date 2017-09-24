@@ -117,14 +117,14 @@ proc ::twitlib::get_my_screen_name {} {
 # get invalid ones.
 proc ::twitlib::fix_status {status} {
 	set changed 0
-	set tweet [dict get $status text]
+	set tweet [dict get $status full_text]
 
 	# if it has a retweet then as they can be truncated and lose
 	# data, especially urls, replace the tweet with the
 	# original tweet but add 'RT @name' to it.
 	if {[dict exists $status retweeted_status]} {
 		set rt_user [dict get $status retweeted_status user screen_name]
-		set rt_tweet [dict get $status retweeted_status text]
+		set rt_tweet [dict get $status retweeted_status full_text]
 		set tweet "RT @$rt_user: $rt_tweet"
 		set changed 1
 	}
@@ -173,8 +173,7 @@ proc ::twitlib::fix_status {status} {
 	}
 
 	if {$changed} {
-		set orig_tweet [dict get $status text]
-		dict set status text $tweet
+		dict set status full_text $tweet
 	}
 	return $status
 }
@@ -195,7 +194,7 @@ proc ::twitlib::fix_statuses {statuses} {
 # unseen tweet, and has the keys:
 #   screen_name
 #   id
-#   text
+#   full_text
 #   created_at (time tweet created)
 #
 # the tweets are ordered from oldest to newest.
@@ -217,8 +216,11 @@ proc ::twitlib::fix_statuses {statuses} {
 #     first request to get another 'page' of results.
 #     note I do not implement this here.
 proc ::twitlib::get_unseen_updates {} {
-	set params [list count $::twitlib::max_updates \
-		since_id $::twitlib::last_id]
+	set params [list \
+		count $::twitlib::max_updates \
+		since_id $::twitlib::last_id \
+		tweet_mode extended \
+	]
 
 	# NOTE: this may raise an error.
 	set result [::twitlib::query $::twitlib::home_url $params GET]
@@ -234,12 +236,12 @@ proc ::twitlib::get_unseen_updates {} {
 		set screen_name [dict get $status user screen_name]
 		set id          [dict get $status id_str]
 		set created_at  [dict get $status created_at]
-		set text        [dict get $status text]
+		set full_text   [dict get $status full_text]
 
 		set d [dict create]
 		dict set d screen_name $screen_name
 		dict set d id $id
-		dict set d text $text
+		dict set d full_text $full_text
 		dict set d created_at $created_at
 
 		lappend updates $d
@@ -258,14 +260,17 @@ proc ::twitlib::get_unseen_updates {} {
 # unseen tweet, and has the keys:
 #   screen_name
 #   id
-#   text
+#   full_text
 #
 # the tweets are ordered from oldest to newest.
 #
 # NOTE: we may raise an error if the request fails.
 proc ::twitlib::get_unseen_mentions {} {
-	set params [list count $::twitlib::max_updates \
-		since_id $::twitlib::last_mentions_id]
+	set params [list \
+		count $::twitlib::max_updates \
+		since_id $::twitlib::last_mentions_id \
+		tweet_mode extended \
+	]
 
 	set result [::twitlib::query $::twitlib::mentions_url $params GET]
 
@@ -279,12 +284,12 @@ proc ::twitlib::get_unseen_mentions {} {
 	foreach status $statuses {
 		set screen_name [dict get $status user screen_name]
 		set id          [dict get $status id]
-		set text        [dict get $status text]
+		set full_text   [dict get $status full_text]
 
 		set d [dict create]
 		dict set d screen_name $screen_name
 		dict set d id $id
-		dict set d text $text
+		dict set d full_text $full_text
 
 		lappend updates $d
 
