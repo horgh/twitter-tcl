@@ -82,6 +82,7 @@ namespace eval ::twitter {
 	bind pub -|- "!twit_msgs"        ::twitter::msgs
 	bind pub -|- "!twit_search"      ::twitter::search
 	bind pub -|- "!twit_searchusers" ::twitter::search_users
+	bind pub -|- "!twit_get_tweet"   ::twitter::get_tweet
 
 	variable followers_trigger !followers
 	bind pub -|- $followers_trigger  ::twitter::followers
@@ -412,6 +413,22 @@ proc ::twitter::search_users {nick uhost hand chan argv} {
 	foreach result $data {
 		::twitter::output $chan "#[incr count] \002[dict get $result screen_name]\002 Name: [dict get $result name] Location: [dict get $result location] Description: [dict get $result description]"
 	}
+}
+
+proc ::twitter::get_tweet {nick uhost hand chan argv} {
+	set id [string trim $argv]
+	if {$id == ""} {
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_get_tweet <ID>"
+		return
+	}
+
+	if {[catch {::twitlib::get_status_by_id $id} status]} {
+		$::twitter::output_cmd "PRIVMSG $chan :Error: $status"
+		return
+	}
+
+	::twitter::output_update $chan [dict get $status user screen_name] $id \
+		[dict get $status full_text]
 }
 
 # Look up and output the users following an account (the most recent).

@@ -80,6 +80,7 @@ scripts to see what else is available.
   - `!twit_msgs` - Retrieve direct messages
   - `!twit_search` - Search tweets
   - `!twit_searchusers` - Search users
+  - `!twit_get_tweet` - Retrieve a particular tweet (by ID)
   - `!followers` - Show followers of a specified account (limited by the
     option `followers_limit`)
   - `!following` - Show who the specified account is following (limited by
