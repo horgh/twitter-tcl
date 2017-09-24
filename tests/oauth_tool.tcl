@@ -25,6 +25,8 @@ proc ::usage {} {
 	puts ""
 	puts "    to test usage of the tokens"
 	puts ""
+	puts "  get_status <consumer key> <consumer secret> <token> <token secret> <id>"
+	puts ""
 }
 
 # perform authentication step 1 - request authorisation URL to get
@@ -74,6 +76,18 @@ proc ::get_updates {consumer_key consumer_secret token token_secret} {
 
 	set count [llength $updates]
 	puts "Retrieved $count status update(s)."
+	return 1
+}
+
+proc ::get_status {consumer_key consumer_secret token token_secret id} {
+	set ::twitlib::oauth_consumer_key $consumer_key
+	set ::twitlib::oauth_consumer_secret $consumer_secret
+	set ::twitlib::oauth_token $token
+	set ::twitlib::oauth_token_secret $token_secret
+
+	set status [::twitlib::get_status_by_id $id]
+	puts "Status:"
+	puts [dict get $status full_text]
 	return 1
 }
 
@@ -152,6 +166,20 @@ proc ::main {} {
 			token token_secret
 		if {![::get_updates $consumer_key $consumer_secret $token \
 			$token_secret]} {
+			exit 1
+		}
+		exit 0
+	}
+
+	if {$mode eq "get_status"} {
+		if {[llength $argv] != 6} {
+			::usage
+			exit 1
+		}
+		lassign $argv mode consumer_key consumer_secret \
+			token token_secret id
+		if {![::get_status $consumer_key $consumer_secret $token \
+			$token_secret $id]} {
 			exit 1
 		}
 		exit 0

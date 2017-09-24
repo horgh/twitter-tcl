@@ -45,6 +45,7 @@ namespace eval ::twitlib {
 	variable following_url    https://api.twitter.com/1.1/friends/list.json
 	variable retweet_url      https://api.twitter.com/1.1/statuses/retweet/
 	variable search_users_url https://api.twitter.com/1.1/users/search.json
+	variable statuses_show_url https://api.twitter.com/1.1/statuses/show.json
 }
 
 # perform a Twitter API request.
@@ -293,4 +294,17 @@ proc ::twitlib::get_unseen_mentions {} {
 		}
 	}
 	return $updates
+}
+
+proc ::twitlib::get_status_by_id {id} {
+	set params [list \
+		id $id \
+		tweet_mode extended \
+	]
+
+	set result [::twitlib::query $::twitlib::statuses_show_url $params GET]
+
+	set fixed_status [::twitlib::fix_status $result]
+
+	return $fixed_status
 }
