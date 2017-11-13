@@ -650,9 +650,13 @@ proc ::twitter::msg {nick uhost hand chan argv} {
 proc ::twitter::tweet {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
 
-	if {[string length $argv] > 140 || $argv == ""} {
-		$::twitter::output_cmd "PRIVMSG $chan :Usage: !tweet <up to 140 characters>"
+	set argv [string trim $argv]
+	if {$argv == ""} {
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !tweet <text>"
 		return
+	}
+	if {[string length $argv] > 280} {
+		set argv [string trim [string range $argv 0 279]]
 	}
 
 	if {[catch {::twitlib::query $::twitlib::status_url [list status $argv]} result]} {
