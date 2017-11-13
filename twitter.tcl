@@ -366,8 +366,9 @@ proc ::twitter::updates {nick uhost hand chan argv} {
 proc ::twitter::search {nick uhost hand chan argv} {
 	# Let this command work in any channel we're in.
 
-	if {[string length $argv] < 1 || [string length $argv] > 140} {
-		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_search <string 140 chars or less>"
+	set argv [string trim $argv]
+	if {[string length $argv] < 1 || [string length $argv] > 500} {
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_search <query, 500 chars max>"
 		return
 	}
 
