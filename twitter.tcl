@@ -617,27 +617,33 @@ proc ::twitter::msgs {nick uhost hand chan argv} {
 }
 
 # Send direct message to a user
-# TODO: replace lrange by a substring starting at the first space to fix
-# 'unmatched open brace in list' issue if the tweet contains one { not balanced
-# by a }.
 proc ::twitter::msg {nick uhost hand chan argv} {
 	if {![channel get $chan twitter]} { return }
-	set argv [split $argv]
 
-	if {[llength $argv] < 2 || [string length [join [lrange $argv 1 end]]] > 140} {
-		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_msg <username> <msg 140 chars or less>"
+	set argv [split $argv]
+	if {[llength $argv] < 2} {
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_msg <username> <text>"
+		return
+	}
+	# I can't find a documented limit on the length of a message.
+	# https://blog.twitter.com/official/en_us/a/2015/removing-the-140-character-limit-from-direct-messages.html
+	set name [string trim [lindex $argv 0]]
+	set msg [string trim [lrange $argv 1 end]]
+	if {$name == "" || $msg == ""} {
+		$::twitter::output_cmd "PRIVMSG $chan :Usage: !twit_msg <username> <text>"
 		return
 	}
 
-	set name [lindex $argv 0]
-	set msg [lrange $argv 1 end]
-	set l [list screen_name $name text $msg]
+	set l [list \
+		screen_name $name \
+		text        $msg \
+	]
 
 	if {[catch {::twitlib::query $::twitlib::msg_url $l} data]} {
-		$::twitter::output_cmd "PRIVMSG $chan :Message to \002$name\002 failed ($data)! (Are they following you?)"
-	} else {
-		::twitter::output $chan "Message sent."
+		$::twitter::output_cmd "PRIVMSG $chan :Message to \002$name\002 failed ($data)! Are they following you?"
+		return
 	}
+	::twitter::output $chan "Message sent."
 }
 
 # Send status update (tweet)
