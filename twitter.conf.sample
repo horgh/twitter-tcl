@@ -14,3 +14,7 @@
 ; screen_name2, screen_name3 then tweets from the first will show in #channel1
 ; and #channel2, tweets from the second will show in #channel 3, and tweets from
 ; the last will show in all channels (that are +twitter).
+;
+; In addition to updating this file, you can use the !follow trigger. For
+; example, !follow <username> <#channel> will set a mapping for <username> to
+; <#channel>.
