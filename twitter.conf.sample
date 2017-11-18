@@ -1,5 +1,5 @@
 [account-to-channel-mapping]
-; Here you can set what channels tweets from accounts you follow to go.
+; Here you can set what channels tweets from accounts you follow go to.
 ;
 ; If an account is not listed here then its tweets go to all +twitter channels.
 ; This is a way to limit specific accounts to specific channels.
