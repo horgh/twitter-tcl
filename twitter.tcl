@@ -11,12 +11,7 @@ package require twitoauth
 package require twitlib
 
 namespace eval ::twitter {
-	# Check for tweets every 1, 5, or 10 min.
-	#
-	# This option must be 1, 5, or 10! You can't have anything else right now.
-	#
-	# Note using 1 minute may put you up against Twitter's API limits if you have
-	# both home and mentions polling enabled.
+	# Check for tweets every update_time minutes.
 	variable update_time 10
 
 	# Show tweet number in tweets shown in channels (1 = on, 0 = off).
@@ -154,26 +149,6 @@ proc ::twitter::oauth_access {nick uhost hand chan argv} {
 	set ::twitlib::oauth_token_secret [dict get $data oauth_token_secret]
 	set screen_name [dict get $data screen_name]
 	$::twitter::output_cmd "PRIVMSG $chan :Successfully retrieved access token for \002${screen_name}\002."
-}
-
-# set the update time by recreating the time bind.
-proc ::twitter::set_update_time {delay} {
-	if {$delay != 1 && $delay != 10 && $delay != 5} {
-		set delay 10
-	}
-	::twitter::flush_update_binds
-	if {$delay == 1} {
-		bind time - "* * * * *" ::twitter::update
-		return
-	}
-	# NOTE: */x cron syntax is not supported by eggdrop.
-	if {$delay == 5} {
-		bind time - "?0 * * * *" ::twitter::update
-		bind time - "?5 * * * *" ::twitter::update
-		return
-	}
-	# 10
-	bind time - "?0 * * * *" ::twitter::update
 }
 
 # remove our time bind.
@@ -715,9 +690,39 @@ proc ::twitter::output_updates {updates} {
 	return $id_to_channels
 }
 
-# grab unseen status updates and output them to +twitter channels.
-proc ::twitter::update {min hour day month year} {
-	# home timeline updates.
+proc ::twitter::loop {} {
+	set update_time_seconds [expr $::twitter::update_time * 60]
+
+	# Ratelimiting for the home timeline is 15 every 15 minutes. Since
+	# ratelimiting works by starting a window when we make the first request, if
+	# we make one request a minute, on the 16th request we can still be in the
+	# original window. To avoid this, make requests every 61 seconds instead.
+	#
+	# Example of the problem: If we make our first request at 00:00:00 then we're
+	# allowed 14 more requests up to and including 00:15:00. Request 0: 00:00:00,
+	# request 1: 00:01:00, ..., request 15: 00:14:00, request 16: 00:15:00. That
+	# last request is still within the original window.
+	if {$update_time_seconds <= 60} {
+		set update_time_seconds 61
+	}
+
+	set ::twitter::after_id [after [expr $update_time_seconds * 1000] ::twitter::loop]
+
+	set now [clock seconds]
+
+	# Don't retrieve update right when we load the script. It can contribute to
+	# hitting ratelimit early as well as we may not be in any channels yet.
+	if {![info exists ::twitter::last_update_time]} {
+		set ::twitter::last_update_time $now
+	}
+
+	set earliest_update_time [expr $::twitter::last_update_time + $update_time_seconds]
+	if {$now < $earliest_update_time} {
+		return
+	}
+
+	set ::twitter::last_update_time $now
+
 	if {$::twitter::poll_home_timeline} {
 		if {[catch {::twitlib::get_unseen_updates} updates]} {
 			putlog "Update retrieval (home) failed: $updates"
@@ -726,7 +731,6 @@ proc ::twitter::update {min hour day month year} {
 		::twitter::output_updates $updates
 	}
 
-	# mentions timeline updates.
 	if {$::twitter::poll_mentions_timeline} {
 		if {[catch {::twitlib::get_unseen_mentions} updates]} {
 			putlog "Update retrieval (mentions) failed: $updates"
@@ -914,7 +918,15 @@ proc ::twitter::dcc_status {handle idx text} {
 
 ::twitter::get_states
 ::twitter::load_config
-::twitter::set_update_time $::twitter::update_time
 ::twitter::write_status_to_log
+
+if {[info exists ::twitter::after_id]} {
+	after cancel $::twitter::after_id
+}
+::twitter::loop
+
+# Stop the old update method that might still be running if we rehashed. In the
+# future we can delete this.
+::twitter::flush_update_binds
 
 putlog "twitter.tcl (c) fedex and horgh"
