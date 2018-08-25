@@ -86,7 +86,6 @@ scripts to see what else is available.
   - `!following` - Show who the specified account is following (limited by
     the option `followers_limit`)
   - `!retweet` - Retweet
-  - `!update_interval` - Change the time between status fetches
   - `!twitstatus` - Show bot's Twitter status. Currently this shows its
     screen name.
   - `!twit_request_token <consumer_key> <consumer_secret>`

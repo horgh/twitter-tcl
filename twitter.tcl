@@ -91,7 +91,6 @@ namespace eval ::twitter {
 	bind pub -|- $following_trigger  ::twitter::following
 
 	bind pub o|o "!retweet"          ::twitter::retweet
-	bind pub o|o "!update_interval"  ::twitter::update_interval
 
 	bind pub -|- !twitstatus         ::twitter::status
 
@@ -185,20 +184,6 @@ proc ::twitter::flush_update_binds {} {
 				[lindex $binding 4]
 		}
 	}
-}
-
-# Change time between automatic update fetches
-proc ::twitter::update_interval {nick uhost hand chan argv} {
-	if {![channel get $chan twitter]} { return }
-
-	if {$argv != 1 && $argv != 10 && $argv != 5} {
-		$::twitter::output_cmd "PRIVMSG $chan :Usage: !update_interval <1, 5, or 10>"
-		return
-	}
-
-	::twitter::set_update_time $argv
-
-	$::twitter::output_cmd "PRIVMSG $chan :Update interval set to $argv minute(s)."
 }
 
 proc ::twitter::status {nick uhost hand chan argv} {
