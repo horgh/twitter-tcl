@@ -247,6 +247,12 @@ proc ::twitlib::get_unseen_updates {} {
 		lappend updates $d
 
 		# Track the max id we've seen. We use this for since_id.
+		#
+		# You may wonder whether comparing the IDs like this is correct given they
+		# are not sequential. However it looks in the past we switched to this for
+		# some reason (from taking the last tweet ID as ordered by Twitter). Also,
+		# the home_timeline docs say "return results with an ID greater than [..]",
+		# so it sounds like it should be fine.
 		if {$id > $::twitlib::last_id} {
 			set ::twitlib::last_id $id
 		}
@@ -293,7 +299,7 @@ proc ::twitlib::get_unseen_mentions {} {
 
 		lappend updates $d
 
-		# Track the max id we've seen. We use this for since_id.
+		# See comment on similar logic in get_unseen_updates.
 		if {$id > $::twitlib::last_mentions_id} {
 			set ::twitlib::last_mentions_id $id
 		}
