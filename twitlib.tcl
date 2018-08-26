@@ -233,12 +233,14 @@ proc ::twitlib::get_unseen_updates {} {
 
 	set updates [list]
 	foreach status $statuses {
+		set user_id     [dict get $status user id_str]
 		set screen_name [dict get $status user screen_name]
 		set id          [dict get $status id_str]
 		set created_at  [dict get $status created_at]
 		set full_text   [dict get $status full_text]
 
 		set d [dict create]
+		dict set d user_id     $user_id
 		dict set d screen_name $screen_name
 		dict set d id $id
 		dict set d full_text $full_text
@@ -288,11 +290,13 @@ proc ::twitlib::get_unseen_mentions {} {
 
 	set updates [list]
 	foreach status $statuses {
+		set user_id     [dict get $status user id_str]
 		set screen_name [dict get $status user screen_name]
 		set id          [dict get $status id_str]
 		set full_text   [dict get $status full_text]
 
 		set d [dict create]
+		dict set d user_id     $user_id
 		dict set d screen_name $screen_name
 		dict set d id $id
 		dict set d full_text $full_text
