@@ -125,9 +125,8 @@ scripts to see what else is available.
       set up the bot.
   - Why do I see errors like "Read-only application cannot POST" when
     trying to tweet or follow?
-    - This means Twitter thinks your bot's credentials do not have write
-      permission. Ensure that the application you set up for the bot is set
-      to have read and write permissions. Also ensure that the key and
-      secret you use in `!twit_request_token` match after checking/updating
-      the write permission. You should start over from
-      `!twit_request_token`.
+    - This means your bot's credentials do not have write permission.
+      Ensure that the application you set up for the bot is set to have
+      read and write permissions. Also ensure that the key and secret you
+      use in `!twit_request_token` match after checking/updating the write
+      permission. You should start over from `!twit_request_token`.
