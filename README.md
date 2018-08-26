@@ -64,9 +64,7 @@ scripts to see what else is available.
     file defined by the `$state_file` variable. This file is relative to
     the Eggdrop root directory. You can set it to any path.
   - The default time between tweet fetches is 10 minutes. You can alter the
-    "bind time" option below to change to a different setting. Note you may
-    not be able to use the 1 minute option if you are polling both the home
-    and the mentions timeline as this can exceed Twitter's API limits.
+    `$update_time` option to change this.
 
 
 ## IRC channel commands
