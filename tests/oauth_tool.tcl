@@ -27,6 +27,8 @@ proc ::usage {} {
 	puts ""
 	puts "  get_status <consumer key> <consumer secret> <token> <token secret> <id>"
 	puts ""
+	puts "  follow <consumer key> <consumer secret> <token> <token secret> <user>"
+	puts ""
 }
 
 # perform authentication step 1 - request authorisation URL to get
@@ -185,8 +187,43 @@ proc ::main {} {
 		exit 0
 	}
 
+	if {$mode eq "follow"} {
+		if {[llength $argv] != 6} {
+			::usage
+			exit 1
+		}
+		lassign $argv mode consumer_key consumer_secret \
+			token token_secret user
+		if {![::follow $consumer_key $consumer_secret $token \
+			$token_secret $user]} {
+			exit 1
+		}
+		exit 0
+	}
+
 	::usage
 	exit 1
+}
+
+proc ::follow {consumer_key consumer_secret token token_secret user} {
+	set ::twitlib::oauth_consumer_key    $consumer_key
+	set ::twitlib::oauth_consumer_secret $consumer_secret
+	set ::twitlib::oauth_token           $token
+	set ::twitlib::oauth_token_secret    $token_secret
+
+	set query [list screen_name $user]
+	if {[catch {::twitlib::query $::twitlib::follow_url $query} result]} {
+		puts "Error: $result"
+		return 0
+	}
+
+	puts $result
+
+	if {[dict exists $result error]} {
+		puts "Follow failed: [dict get $result error]"
+		return 0
+	}
+	return 1
 }
 
 ::main
