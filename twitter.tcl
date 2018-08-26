@@ -57,6 +57,7 @@ namespace eval ::twitter {
 
 	variable last_update
 	variable last_msg
+	variable ignore_tweets [dict create]
 
 	# Map of accounts you follow to the channels to show statuses in.
 	#
@@ -242,6 +243,15 @@ proc ::twitter::follow {nick uhost hand chan argv} {
 	if {[dict exists $result error]} {
 		::twitter::output $chan "Follow failed ($screen_name): [dict get $result error]"
 		return
+	}
+
+	# We can receive several tweets from the user all at once the next time we
+	# poll the timeline. To avoid that, don't output tweets up to and including
+	# the most recent one from the user.
+	if {[dict exists $result status]} {
+		set user_id       [dict get $result id_str]
+		set last_tweet_id [dict get $result status id_str]
+		dict set ::twitter::ignore_tweets $user_id $last_tweet_id
 	}
 
 	::twitter::output $chan "Now following [dict get $result screen_name]!"
@@ -643,6 +653,10 @@ proc ::twitter::output_updates {updates} {
 	set all_channels [channels]
 
 	foreach status $updates {
+		if {[::twitter::should_ignore_tweet $status]} {
+			continue
+		}
+
 		# Figure out what channels to output the status to.
 		#
 		# By default we output to all +twitter channels.
@@ -688,6 +702,18 @@ proc ::twitter::output_updates {updates} {
 	}
 
 	return $id_to_channels
+}
+
+proc ::twitter::should_ignore_tweet {status} {
+	set user_id [dict get $status user_id]
+	if {![dict exists $::twitter::ignore_tweets $user_id]} {
+		return 0
+	}
+	set ignore_up_to_id [dict get $::twitter::ignore_tweets $user_id]
+	if {[dict get $status id] <= $ignore_up_to_id} {
+		return 1
+	}
+	return 0
 }
 
 proc ::twitter::loop {} {
