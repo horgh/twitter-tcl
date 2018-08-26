@@ -1,6 +1,6 @@
 # twitter-tcl
 
-This project provides an [Eggdrop](http://www.eggheads.org) bot script to
+This project provides an [Eggdrop](https://www.eggheads.org) bot script to
 show tweets in IRC channels. You can also do things like tweet from IRC.
 
 The repository contains libraries that are useful independently as well.
