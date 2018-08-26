@@ -728,7 +728,10 @@ proc ::twitter::loop {} {
 			putlog "Update retrieval (home) failed: $updates"
 			return
 		}
-		::twitter::output_updates $updates
+		if {[catch {::twitter::output_updates $updates} err]} {
+			putlog "Outputting updates (home) failed: $err"
+			return
+		}
 	}
 
 	if {$::twitter::poll_mentions_timeline} {
@@ -736,7 +739,10 @@ proc ::twitter::loop {} {
 			putlog "Update retrieval (mentions) failed: $updates"
 			return
 		}
-		::twitter::output_updates $updates
+		if {[catch {::twitter::output_updates $updates} err]} {
+			putlog "Outputting updates (mentions) failed: $err"
+			return
+		}
 	}
 }
 
