@@ -31,6 +31,9 @@ The scripts/libraries in this repository are:
   - Review the variables at the top of `twitlib.tcl` and `twitter.tcl`. You
     can change the options there if you like. The defaults are probably
     okay.
+  - Copy `twitter.conf.sample` to your bot's directory root and name it
+    `twitter.conf`. You don't need to change anything in this file. The bot
+    updates it in some cases.
   - Register for a consumer key/secret at
     [apps.twitter.com](https://apps.twitter.com) by creating an
     application. This is used for authentication with Twitter.
