@@ -289,7 +289,7 @@ proc ::twitlib::get_unseen_mentions {} {
 	set updates [list]
 	foreach status $statuses {
 		set screen_name [dict get $status user screen_name]
-		set id          [dict get $status id]
+		set id          [dict get $status id_str]
 		set full_text   [dict get $status full_text]
 
 		set d [dict create]
