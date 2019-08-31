@@ -25,7 +25,7 @@ proc ::get_test_statuses {json_file} {
 
 	set fixed_statuses [::twitlib::fix_statuses $statuses]
 	foreach status $fixed_statuses {
-		set tweet [dict get $status text]
+		set tweet [dict get $status full_text]
 		puts "Tweet: $tweet"
 	}
 	return 1
@@ -270,7 +270,7 @@ proc ::test_output_updates {} {
 			channels_plustwitter [list] \
 			mappings [dict create] \
 			statuses [list \
-				[dict create screen_name acct1 id 1 text hi] \
+				[dict create screen_name acct1 id 1 full_text hi user_id 1] \
 			] \
 			expected [dict create] \
 		] \
@@ -280,7 +280,7 @@ proc ::test_output_updates {} {
 			channels_plustwitter [list #one #two] \
 			mappings [dict create] \
 			statuses [list \
-				[dict create screen_name acct1 id 1 text hi] \
+				[dict create screen_name acct1 id 1 full_text hi user_id 1] \
 			] \
 			expected [dict create 1 [list #one #two]] \
 		] \
@@ -290,7 +290,7 @@ proc ::test_output_updates {} {
 			channels_plustwitter [list #one #two] \
 			mappings [dict create acct1 [list]] \
 			statuses [list \
-				[dict create screen_name acct1 id 1 text hi] \
+				[dict create screen_name acct1 id 1 full_text hi user_id 1] \
 			] \
 			expected [dict create 1 [list #one #two]] \
 		] \
@@ -300,7 +300,7 @@ proc ::test_output_updates {} {
 			channels_plustwitter [list #one #two] \
 			mappings [dict create acct1 [list #one]] \
 			statuses [list \
-				[dict create screen_name acct1 id 1 text hi] \
+				[dict create screen_name acct1 id 1 full_text hi user_id 1] \
 			] \
 			expected [dict create 1 [list #one]] \
 		] \
@@ -310,7 +310,7 @@ proc ::test_output_updates {} {
 			channels_plustwitter [list #one #two] \
 			mappings [dict create acct1 [list #one #two #three]] \
 			statuses [list \
-				[dict create screen_name acct1 id 1 text hi] \
+				[dict create screen_name acct1 id 1 full_text hi user_id 1] \
 			] \
 			expected [dict create 1 [list #one #two]] \
 		] \
