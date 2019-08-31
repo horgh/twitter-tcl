@@ -2,6 +2,12 @@
 
 ## 0.3 - Unreleased
 
+* Updated to support Tcl 8.6.9. Tcl 8.6.9 introduced a backwards
+  incompatible change to ::http::formatQuery.
+
+Note the changelog is incomplete prior to the above as we didn't keep it
+for a long time.
+
 - fix direct msg
 - replace `decode_html` with `htmlparse::mapEscapes` (though this isn't even
   really needed i think!)
@@ -34,6 +40,7 @@
 - misc cleanup/small bugfixes
 - add `max_updates` variable to control the number of status to display from
   one query
+
 
 ## 0.1 - 2010-02-06
 
