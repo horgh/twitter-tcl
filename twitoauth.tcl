@@ -189,6 +189,9 @@ proc ::twitoauth::uri_escape {str} {
 
 	# uppercase all %hex where hex=2 octets
 	set str [regsub -all -- {%(\w{2})} $str {%[string toupper \1]}]
+
+	# TODO(horgh): This subst seems shady. We need it to execute the [string
+	# toupper \1] currently however.
 	return [subst $str]
 }
 
