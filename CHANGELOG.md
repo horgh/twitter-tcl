@@ -1,4 +1,4 @@
-# twitter.tcl
+# twitter-tcl
 
 ## 0.3 - Unreleased
 
@@ -20,9 +20,13 @@
 - require consumer key/secret specified in `!twit_request_token` rather than
   hardcode into oauth.tcl
 - fix failed tweet msg to make more sense (not assume http error)
+- create `base_url` correctly for signing (remove `?params=...`)
+- improve error msg if http timeout occurs
+- remove need to hardcode consumer key/secret by providing them as arguments
+  to the various functions
 
 
-## 0.2 - May 18 2010
+## 0.2 - 2010-05-18
 
 - add timeout to query to avoid hangs
 - update `decode_html` for more accurate utf translation
@@ -31,20 +35,6 @@
 - add `max_updates` variable to control the number of status to display from
   one query
 
-## 0.1 - Feb 6 2010
+## 0.1 - 2010-02-06
 
 - initial release
-
-
-# oauth.tcl
-
-## 0.2 - Unreleased
-
-- create `base_url` correctly for signing (remove `?params=...`)
-- improve error msg if http timeout occurs
-- remove need to hardcode consumer key/secret by providing them as arguments
-  to the various functions
-
-# 0.1 - May 18 2010
-
-- Initial release
