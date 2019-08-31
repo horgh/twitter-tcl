@@ -161,9 +161,32 @@ proc ::twitoauth::nonce {} {
 	return [sha1::sha1 $nonce]
 }
 
-# wrapper around http::formatQuery which uppercases octet characters
+# URI escape the parameter. The parameter may be a list or a string. If
+# it's a list, we'll construct a string similar to ::http::formatQuery.
+#
+# A difference from ::http::formatQuery is that we uppercase percent
+# encoded octets. This is required in some parts of the OAuth
+# specification when signing.
 proc ::twitoauth::uri_escape {str} {
-	set str [http::formatQuery {*}$str]
+	# Tcl 8.6.9 changed ::http::formatQuery to require an even number of
+	# parameters. Account for that.
+	if {[llength $str] % 2 != 0} {
+		# For simplicity we only handle the single parameter case.
+		if {[llength $str] != 1} {
+			error "invalid number of parameters to uri_escape"
+		}
+
+		# Tcl 8.6.9 introduced ::http::quoteString as a replacement.
+		#
+		# Annoyingly we can't check for it with 'info procs'. I think it's
+		# because of how it's declared (with 'interp alias').
+		if {[catch {set str [::http::formatQuery $str]}]} {
+			set str [::http::quoteString $str]
+		}
+	} else {
+		set str [::http::formatQuery {*}$str]
+	}
+
 	# uppercase all %hex where hex=2 octets
 	set str [regsub -all -- {%(\w{2})} $str {%[string toupper \1]}]
 	return [subst $str]
