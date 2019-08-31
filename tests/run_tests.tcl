@@ -98,6 +98,16 @@ proc ::main {} {
 		set success 0
 	}
 
+	if {![::test_oauth_header]} {
+		puts "test_output_updates failed"
+		set success 0
+	}
+
+	if {![::test_uri_escape]} {
+		puts "test_uri_escape failed"
+		set success 0
+	}
+
 	if {$success} {
 		puts "All tests passed"
 	} else {
@@ -344,6 +354,69 @@ proc ::test_output_updates {} {
 				return 0
 			}
 		}
+	}
+
+	return 1
+}
+
+proc ::test_oauth_header {} {
+	set tests [list \
+		[dict create \
+			description "multiple key/values" \
+			params [list abc hi&there hi&what yes&hi] \
+			output {abc="hi%26there",hi%26what="yes%26hi"}
+		] \
+		[dict create \
+			description "one key/value" \
+			params [list abc hi&th?re] \
+			output {abc="hi%26th%3Fre"} \
+		] \
+	]
+
+	foreach test $tests {
+		set got [::twitoauth::oauth_header \
+			[dict get $test params] \
+		]
+		set want [dict get $test output]
+		if {$got == $want} {
+			continue
+		}
+		puts "Test failed: [dict get $test description]: Got $got, wanted $want"
+		return 0
+	}
+
+	return 1
+}
+
+proc ::test_uri_escape {} {
+	set tests [list \
+		[dict create \
+			description "multiple key/values" \
+			params [list abc hi&there hi&what yes&hi] \
+			output {abc=hi%26there&hi%26what=yes%26hi}
+		] \
+		[dict create \
+			description "one key/value" \
+			params [list abc hi&th?re] \
+			output {abc=hi%26th%3Fre} \
+		] \
+		[dict create \
+			description "one parameter" \
+			params [list hi&th?re] \
+			output {hi%26th%3Fre} \
+		] \
+	]
+
+	foreach test $tests {
+		set got [::twitoauth::uri_escape \
+			[dict get $test params] \
+		]
+		set want [dict get $test output]
+		if {$got == $want} {
+			continue
+		}
+		puts "Test failed: [dict get $test description]: Got $got, wanted $want"
+		return 0
 	}
 
 	return 1
