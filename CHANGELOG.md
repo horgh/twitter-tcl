@@ -2,6 +2,7 @@
 
 ## 0.3 - Unreleased
 
+* Improved error checking of OAuth protected HTTP requests.
 * Updated to support Tcl 8.6.9. Tcl 8.6.9 introduced a backwards
   incompatible change to ::http::formatQuery.
 

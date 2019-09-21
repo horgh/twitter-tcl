@@ -110,16 +110,26 @@ proc ::twitoauth::query {url method oauth_header {query {}}} {
 	} else {
 		set token [http::geturl $url -headers $header -method $method -timeout $::twitoauth::timeout]
 	}
-	set data [http::data $token]
-	set ncode [http::ncode $token]
-	set status [http::status $token]
-	http::cleanup $token
-	if {$status == "reset"} {
-		error "OAuth failure: HTTP timeout"
+
+	set status [::http::status $token]
+	if {$status != "ok"} {
+		if {$status == "error"} {
+			set err [::http::error $token]
+			::http::cleanup $token
+			error "OAuth HTTP request failure: error: $err"
+		}
+		::http::cleanup $token
+		# status can be reset, timeout, or eof apparently.
+		error "OAuth HTTP request failure: $status"
 	}
+
+	set ncode [::http::ncode $token]
+	set data [::http::data $token]
+	::http::cleanup $token
 	if {$ncode != 200} {
-		error "OAuth failure: (code: $ncode) $data"
+		error "OAuth HTTP request failure: HTTP $ncode: $data"
 	}
+
 	return $data
 }
 
