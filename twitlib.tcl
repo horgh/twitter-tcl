@@ -222,7 +222,6 @@ proc ::twitlib::get_unseen_updates {} {
 		tweet_mode extended \
 	]
 
-	# NOTE: this may raise an error.
 	set result [::twitlib::query $::twitlib::home_url $params GET]
 
 	# re-order - oldest to newest.
