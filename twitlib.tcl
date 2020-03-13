@@ -157,7 +157,7 @@ proc ::twitlib::fix_status {status} {
 	# \ufffd in some cases?)
 	#set tweet [string map {\ufffd ""} $tweet]
 	# neither worked. instead, checking with 'string is' seems to do
-	# the tric.
+	# the trick.
 	set tweet_filtered_chars ""
 	for {set i 0} {$i < [string length $tweet]} {incr i} {
 		set char [string index $tweet $i]
@@ -208,7 +208,7 @@ proc ::twitlib::fix_statuses {statuses} {
 #     be translated into the oldest tweet available. I'm not
 #     sure how far back tweets are available
 #   - since_id and count alone will return the most recent
-#     count tweets tweets newer than since_id, so there can be
+#     count tweets newer than since_id, so there can be
 #     a gap between since_id and the tweets you get back.
 #     to resolve this we must use the 'max_id' parameter to
 #     page back. together with since_id and max_id we can
