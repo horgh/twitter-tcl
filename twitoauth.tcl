@@ -105,6 +105,8 @@ proc ::twitoauth::query_call {url consumer_key consumer_secret method params {si
 proc ::twitoauth::query {url method oauth_header {query {}}} {
 	set header [list Authorization [concat "OAuth" $oauth_header]]
 
+	::http::register https 443 [list ::tls::socket -ssl2 0 -ssl3 0 -tls1 1]
+
 	if {$method != "GET"} {
 		set token [http::geturl $url -headers $header -query $query -method $method -timeout $::twitoauth::timeout]
 	} else {
