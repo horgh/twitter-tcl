@@ -7,6 +7,7 @@
 package require base64
 package require http
 package require sha1
+package require json
 package require tls
 
 package provide twitoauth 0.1
@@ -215,4 +216,90 @@ proc ::twitoauth::params_to_dict {params} {
 		dict set answer {*}[split $pair =]
 	}
 	return $answer
+}
+
+proc ::twitoauth::query_api_v2 {url consumer_key consumer_secret http_method oauth_token oauth_token_secret body query_params} {
+	set params [list [list oauth_token $oauth_token]]
+	return [::twitoauth::query_call_v2 \
+		$url \
+		$consumer_key \
+		$consumer_secret \
+		$http_method \
+		$params \
+		$body \
+		$oauth_token_secret \
+		$query_params \
+	]
+}
+
+proc ::twitoauth::query_call_v2 {url consumer_key consumer_secret http_method params body token_secret query_params} {
+	set oauth_raw [dict create oauth_nonce [::twitoauth::nonce]]
+	dict append oauth_raw oauth_signature_method HMAC-SHA1
+	dict append oauth_raw oauth_timestamp [clock seconds]
+	dict append oauth_raw oauth_consumer_key $consumer_key
+	dict append oauth_raw oauth_version 1.0
+
+	foreach param $params {
+		dict append oauth_raw {*}$param
+	}
+
+	# oauth_raw_sign is data to be signed but not placed in the header.
+	set oauth_raw_sign $oauth_raw
+
+	# We need to include query string parameters when signing.
+	foreach key [dict keys $query_params] {
+		dict append oauth_raw_sign $key [dict get $query_params $key]
+	}
+
+	set signature [::twitoauth::signature \
+		$url \
+		$consumer_secret \
+		$http_method \
+		$oauth_raw_sign \
+		$token_secret \
+	]
+	dict append oauth_raw oauth_signature $signature
+
+	set oauth_header [::twitoauth::oauth_header $oauth_raw]
+
+	return [::twitoauth::query_v2 $url $http_method $oauth_header $body]
+}
+
+proc ::twitoauth::query_v2 {url method oauth_header body} {
+	set header [list Authorization [concat "OAuth" $oauth_header]]
+
+	::http::register https 443 [list ::tls::socket -ssl2 0 -ssl3 0 -tls1 1]
+
+	if {$method != "GET"} {
+		set token [http::geturl \
+			$url \
+			-headers $header \
+			-query $body \
+			-type application/json \
+			-method $method \
+			-timeout $::twitoauth::timeout\
+		]
+	} else {
+		set token [http::geturl $url -headers $header -method $method -timeout $::twitoauth::timeout]
+	}
+
+	set status [::http::status $token]
+	if {$status != "ok"} {
+		if {$status == "error"} {
+			set err [::http::error $token]
+			::http::cleanup $token
+			error "OAuth HTTP request failure: error: $err"
+		}
+		::http::cleanup $token
+		# status can be reset, timeout, or eof apparently.
+		error "OAuth HTTP request failure: $status"
+	}
+
+	set ncode [::http::ncode $token]
+	set data [::http::data $token]
+	::http::cleanup $token
+	return [dict create \
+		status $ncode \
+		body [::json::json2dict $data] \
+	]
 }

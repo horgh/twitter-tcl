@@ -7,6 +7,7 @@
 package require htmlparse
 package require http
 package require inifile
+package require json::write
 package require twitoauth
 package require twitlib
 
@@ -629,12 +630,25 @@ proc ::twitter::tweet {nick uhost hand chan argv} {
 		set argv [string trim [string range $argv 0 279]]
 	}
 
-	if {[catch {::twitlib::query $::twitlib::status_url [list status $argv]} result]} {
+	# tcllib doesn't have a way to turn a dict into an object. Newer
+	# versions have object-strings which kind of does that.
+	set json_body "{\"text\":"
+	append json_body [::json::write string $argv]
+	append json_body "}"
+
+	set query_params {}
+
+	if {[catch {::twitlib::query_v2 $::twitlib::status_url $json_body POST $query_params} result]} {
 		$::twitter::output_cmd "PRIVMSG $chan :Tweet failed! ($argv) Error: $result."
 		return
 	}
+	set status [dict get $result status]
+	set body [dict get $result body]
+	if {$status != 201} {
+		error "HTTP request failure: HTTP $status: $body"
+	}
 
-	set update_id [dict get $result id]
+	set update_id [dict get $body data id]
 	if {$update_id == $::twitter::last_update} {
 		$::twitter::output_cmd "PRIVMSG $chan :Tweet failed: Duplicate of tweet #$update_id. ($argv)"
 		return

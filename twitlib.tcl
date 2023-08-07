@@ -31,8 +31,10 @@ namespace eval ::twitlib {
 
 	# Retrieve information about your account, such as the authenticated username.
 	variable account_settings_url https://api.twitter.com/1.1/account/settings.json
-	# POST status_url to create a tweet.
-	variable status_url       https://api.twitter.com/1.1/statuses/update.json
+
+	# Create a tweet (new status).
+	variable status_url       https://api.twitter.com/2/tweets
+
 	# GET home_url to retrieve tweets by users you follow/yourself.
 	variable home_url         https://api.twitter.com/1.1/statuses/home_timeline.json
 	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
@@ -87,6 +89,31 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 
 	# apparently we'll get back unicode
 	return [::json::json2dict $data]
+}
+
+# Perform an API v2 request.
+proc ::twitlib::query_v2 {url body http_method query_params} {
+	if {$::twitlib::oauth_token == "" || \
+		$::twitlib::oauth_token_secret == "" || \
+		$::twitlib::oauth_consumer_key == {} || \
+		$::twitlib::oauth_consumer_secret == {}} {
+		error "OAuth not initialised."
+	}
+
+	if {[dict size $query_params] != 0} {
+		append url ?[::http::formatQuery {*}$query_params]
+	}
+
+	return [::twitoauth::query_api_v2 \
+		$url \
+		$::twitlib::oauth_consumer_key \
+		$::twitlib::oauth_consumer_secret \
+		$http_method \
+		$::twitlib::oauth_token \
+		$::twitlib::oauth_token_secret \
+		$body \
+		$query_params \
+	]
 }
 
 proc ::twitlib::get_account_settings {} {
