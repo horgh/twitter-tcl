@@ -28,7 +28,8 @@ namespace eval ::twitlib {
 	variable oauth_token_secret {}
 
 	# Twitter API URLs
-	# GET account/settings to get info about your account.
+
+	# Retrieve information about your account, such as the authenticated username.
 	variable account_settings_url https://api.twitter.com/1.1/account/settings.json
 	# POST status_url to create a tweet.
 	variable status_url       https://api.twitter.com/1.1/statuses/update.json
