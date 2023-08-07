@@ -29,8 +29,8 @@ namespace eval ::twitlib {
 
 	# Twitter API URLs
 
-	# Retrieve information about your account, such as the authenticated username.
-	variable account_settings_url https://api.twitter.com/1.1/account/settings.json
+	# Look up information about your account.
+	variable users_lookup_me_url https://api.twitter.com/2/users/me
 
 	# Create a tweet (new status).
 	variable status_url       https://api.twitter.com/2/tweets
@@ -117,16 +117,23 @@ proc ::twitlib::query_v2 {url body http_method query_params} {
 }
 
 proc ::twitlib::get_account_settings {} {
-	set result [::twitlib::query $::twitlib::account_settings_url {} GET]
-	return $result
+	set body {}
+	set query_params {}
+	return [::twitlib::query_v2 \
+		$::twitlib::users_lookup_me_url \
+		$body \
+		GET \
+		$query_params \
+	]
 }
 
 proc ::twitlib::get_my_screen_name {} {
-	set settings [::twitlib::get_account_settings]
-	if {![dict exists $settings screen_name]} {
+	set response [::twitlib::get_account_settings]
+	set body [dict get $response body]
+	if {![dict exists $body data username]} {
 		return ""
 	}
-	return [dict get $settings screen_name]
+	return [dict get $body data username]
 }
 
 # take status dict from a timeline and reformats it if necessary.
