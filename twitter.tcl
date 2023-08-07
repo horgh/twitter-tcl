@@ -803,9 +803,15 @@ proc ::twitter::get_states {} {
 	set ::twitlib::last_id [lindex $states 0]
 	set ::twitter::last_update [lindex $states 1]
 	set ::twitter::last_msg [lindex $states 2]
+
+	# Authentication token: Access token.
 	set ::twitlib::oauth_token [lindex $states 3]
+	# Authentication token: Access token secret.
 	set ::twitlib::oauth_token_secret [lindex $states 4]
+
+	# Consumer key: API key.
 	set ::twitlib::oauth_consumer_key [lindex $states 5]
+	# Consumer key: API key secret.
 	set ::twitlib::oauth_consumer_secret [lindex $states 6]
 
 	set ::twitlib::last_mentions_id 1
