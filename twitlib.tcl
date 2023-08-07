@@ -283,6 +283,11 @@ proc ::twitlib::get_unseen_updates {} {
 		error "HTTP request failure: HTTP $status: $body"
 	}
 
+	# This seems to happen if there's no new updates?
+	if {![dict exists $body data]} {
+		return [list]
+	}
+
 	set statuses [dict get $body data]
 	set includes [dict get $body includes]
 
