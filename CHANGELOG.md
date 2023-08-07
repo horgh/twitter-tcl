@@ -7,7 +7,8 @@
   incompatible change to ::http::formatQuery.
 * Always set up to make HTTPS requests when performing a query. Previously
   it was possible other scripts could clobber this.
-* Switch to v2 API for posting tweets and account lookup.
+* Switch to v2 API for posting tweets, account lookup, and retrieving home
+  timeline tweets.
 
 Note the changelog is incomplete prior to the above as we didn't keep it
 for a long time.
