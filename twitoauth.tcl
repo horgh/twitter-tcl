@@ -277,10 +277,15 @@ proc ::twitoauth::query_v2 {url method oauth_header body} {
 			-query $body \
 			-type application/json \
 			-method $method \
-			-timeout $::twitoauth::timeout\
+			-timeout $::twitoauth::timeout \
 		]
 	} else {
-		set token [http::geturl $url -headers $header -method $method -timeout $::twitoauth::timeout]
+		set token [http::geturl \
+			$url \
+			-headers $header \
+			-method $method \
+			-timeout $::twitoauth::timeout \
+		]
 	}
 
 	set status [::http::status $token]
