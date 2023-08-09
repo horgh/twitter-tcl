@@ -48,12 +48,19 @@ namespace eval ::twitlib {
 	# Retrieve single tweet.
 	variable get_status_url   https://api.twitter.com/2/tweets/%s
 
+	# Follow.
+	variable follow_url       https://api.twitter.com/2/users/%s/following
+
+	# Unfollow.
+	variable unfollow_url     https://api.twitter.com/2/users/%s/following/%s
+
+	# Look up user.
+	variable look_up_user_url https://api.twitter.com/2/users/by/username/%s
+
 	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
 	variable msg_url          https://api.twitter.com/1.1/direct_messages/new.json
 	variable msgs_url         https://api.twitter.com/1.1/direct_messages.json
 	variable trends_place_url https://api.twitter.com/1.1/trends/place.json
-	variable follow_url       https://api.twitter.com/1.1/friendships/create.json
-	variable unfollow_url     https://api.twitter.com/1.1/friendships/destroy.json
 	variable search_url       https://api.twitter.com/1.1/search/tweets.json
 	variable followers_url    https://api.twitter.com/1.1/followers/list.json
 	variable following_url    https://api.twitter.com/1.1/friends/list.json
@@ -135,6 +142,17 @@ proc ::twitlib::get_account_settings {} {
 		GET \
 		$query_params \
 	]
+}
+
+proc ::twitlib::look_up_user_id {screen_name} {
+	# TODO(horgh): We should URL encode the screen name.
+	set url [format $::twitlib::look_up_user_url $screen_name]
+	set body {}
+	set method GET
+	set query_params {}
+
+	set result [::twitlib::query_v2 $url $body $method $query_params]
+	return [dict get $result body data id]
 }
 
 proc ::twitlib::get_my_screen_name {} {

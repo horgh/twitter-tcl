@@ -234,28 +234,39 @@ proc ::twitter::follow {nick uhost hand chan argv} {
 		}
 	}
 
-	set query [list screen_name $screen_name]
-	if {[catch {::twitlib::query $::twitlib::follow_url $query} result]} {
-		$::twitter::output_cmd "PRIVMSG $chan :Unable to follow or already friends with $screen_name!"
-		putlog "Unable to follow or already friends with $screen_name: $result"
+	if {$::twitlib::my_user_id == 0} {
+		set response [::twitlib::get_account_settings]
+		set ::twitlib::my_user_id [dict get $response body data id]
+	}
+
+	set url [format $::twitlib::follow_url $::twitlib::my_user_id]
+
+	set target_user_id [::twitlib::look_up_user_id $screen_name]
+
+	# tcllib doesn't have a way to turn a dict into an object. Newer
+	# versions have object-strings which kind of does that.
+	set body "{\"target_user_id\":"
+	append body [::json::write string $target_user_id]
+	append body "}"
+
+	set body [encoding convertto utf-8 $body]
+
+	set query_params {}
+
+	if {[catch {::twitlib::query_v2 $url $body POST $query_params} result]} {
+		$::twitter::output_cmd "PRIVMSG $chan: Follow failed! Error: $result"
 		return
 	}
 
-	if {[dict exists $result error]} {
-		::twitter::output $chan "Follow failed ($screen_name): [dict get $result error]"
-		return
+	set http_status [dict get $result status]
+	set body [dict get $result body]
+	if {$http_status != 200} {
+		error "HTTP request failure: HTTP $http_status: $body"
 	}
 
-	# We can receive several tweets from the user all at once the next time we
-	# poll the timeline. To avoid that, don't output tweets up to and including
-	# the most recent one from the user.
-	if {[dict exists $result status]} {
-		set user_id       [dict get $result id_str]
-		set last_tweet_id [dict get $result status id_str]
-		dict set ::twitter::ignore_tweets $user_id $last_tweet_id
-	}
-
-	::twitter::output $chan "Now following [dict get $result screen_name]!"
+	# TODO(horgh): We could check the response body to know if we've only
+	# requested to follow rather than actually followed the account.
+	::twitter::output $chan "Now following $screen_name!"
 
 	# Update mappings and save config no matter what (even if there is no
 	# mapping). If they specified no channels then this lets us reset mapping to
@@ -286,17 +297,30 @@ proc ::twitter::unfollow {nick uhost hand chan argv} {
 		return
 	}
 
-	if {[catch {::twitlib::query $::twitlib::unfollow_url [list screen_name $argv]} result]} {
-		$::twitter::output_cmd "PRIVMSG $chan :Unfollow failed. ($argv)"
+	if {$::twitlib::my_user_id == 0} {
+		set response [::twitlib::get_account_settings]
+		set ::twitlib::my_user_id [dict get $response body data id]
+	}
+
+	set target_user_id [::twitlib::look_up_user_id $argv]
+
+	set url [format $::twitlib::unfollow_url $::twitlib::my_user_id $target_user_id]
+	set body {}
+	set method DELETE
+	set query_params {}
+
+	if {[catch {::twitlib::query_v2 $url $body $method $query_params} result]} {
+		$::twitter::output_cmd "PRIVMSG $chan :Unfollow failed! Error: $result"
 		return
 	}
 
-	if {[dict exists $result error]} {
-		::twitter::output $chan "Unfollow failed ($argv): [dict get $result error]"
-		return
+	set http_status [dict get $result status]
+	set body [dict get $result body]
+	if {$http_status != 200} {
+		error "HTTP request failure: HTTP $http_status: $body"
 	}
 
-	::twitter::output $chan "Unfollowed [dict get $result screen_name]."
+	::twitter::output $chan "Unfollowed $argv."
 }
 
 # Get last n, n [1, 20] updates
