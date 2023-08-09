@@ -399,8 +399,11 @@ proc ::twitter::get_tweet {nick uhost hand chan argv} {
 		return
 	}
 
-	::twitter::output_update $chan [dict get $status user screen_name] $id \
-		[dict get $status full_text]
+	::twitter::output_update \
+		$chan \
+		[dict get $status screen_name] \
+		$id \
+		[dict get $status text]
 }
 
 # Look up and output the users following an account (the most recent).

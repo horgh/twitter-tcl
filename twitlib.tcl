@@ -45,6 +45,9 @@ namespace eval ::twitlib {
 	# Retrieve tweets by users you follow/yourself.
 	variable home_url         https://api.twitter.com/2/users/%s/timelines/reverse_chronological
 
+	# Retrieve single tweet.
+	variable get_status_url   https://api.twitter.com/2/tweets/%s
+
 	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
 	variable msg_url          https://api.twitter.com/1.1/direct_messages/new.json
 	variable msgs_url         https://api.twitter.com/1.1/direct_messages.json
@@ -56,7 +59,6 @@ namespace eval ::twitlib {
 	variable following_url    https://api.twitter.com/1.1/friends/list.json
 	variable retweet_url      https://api.twitter.com/1.1/statuses/retweet/
 	variable search_users_url https://api.twitter.com/1.1/users/search.json
-	variable statuses_show_url https://api.twitter.com/1.1/statuses/show.json
 }
 
 # perform a Twitter API request.
@@ -384,14 +386,35 @@ proc ::twitlib::get_unseen_mentions {} {
 }
 
 proc ::twitlib::get_status_by_id {id} {
-	set params [list \
-		id $id \
-		tweet_mode extended \
+	set url [format $::twitlib::get_status_url $id]
+	set body {}
+	set query_params [list \
+		expansions   author_id \
+		tweet.fields author_id,text \
+		user.fields  id,username \
 	]
 
-	set result [::twitlib::query $::twitlib::statuses_show_url $params GET]
+	set result [::twitlib::query_v2 $url $body GET $query_params]
 
-	set fixed_status [::twitlib::fix_status $result]
+	set http_status [dict get $result status]
+	set body [dict get $result body]
+	if {$http_status != 200} {
+		error "HTTP request failure: HTTP $http_status: $body"
+	}
 
-	return $fixed_status
+	set status [dict get $body data]
+	set includes [dict get $body includes]
+
+	# TODO(horgh): I don't know if this is necessary with API v2.
+	set status [::twitlib::fix_status $status]
+
+	set screen_name "unknown"
+	foreach user [dict get $includes users] {
+		if {[dict get $user id] == [dict get $status author_id]} {
+			dict set status screen_name [dict get $user username]
+			break
+		}
+	}
+
+	return $status
 }
