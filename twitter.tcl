@@ -639,6 +639,8 @@ proc ::twitter::tweet {nick uhost hand chan argv} {
 	append json_body [::json::write string $argv]
 	append json_body "}"
 
+	set json_body [encoding convertto utf-8 $json_body]
+
 	set query_params {}
 
 	if {[catch {::twitlib::query_v2 $::twitlib::status_url $json_body POST $query_params} result]} {
