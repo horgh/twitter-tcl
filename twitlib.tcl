@@ -43,7 +43,7 @@ namespace eval ::twitlib {
 	variable status_url       https://api.twitter.com/2/tweets
 
 	# Retrieve tweets by users you follow/yourself.
-	variable home_url         https://api.twitter.com/2/users/%d/timelines/reverse_chronological
+	variable home_url         https://api.twitter.com/2/users/%s/timelines/reverse_chronological
 
 	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
 	variable msg_url          https://api.twitter.com/1.1/direct_messages/new.json
