@@ -5,6 +5,10 @@
 * Improved error checking of OAuth protected HTTP requests.
 * Updated to support Tcl 8.6.9. Tcl 8.6.9 introduced a backwards
   incompatible change to ::http::formatQuery.
+* Always set up to make HTTPS requests when performing a query. Previously
+  it was possible other scripts could clobber this.
+* Switch to v2 API for posting tweets, account lookup, retrieving home
+  timeline tweets, retrieving tweet by ID, following, and unfollowing.
 
 Note the changelog is incomplete prior to the above as we didn't keep it
 for a long time.

@@ -21,6 +21,13 @@ namespace eval ::twitlib {
 	# Last tweet id we have seen - mentions timeline.
 	variable last_mentions_id 1
 
+	# Authenticated account user ID. This gets set automatically.
+	#
+	# TODO(horgh): We may need to re-set this back to 0 when we authenticate.
+	# e.g. if we switch between accounts when already running, we'll still have
+	# the first ID cached right now.
+	variable my_user_id 0
+
 	# OAuth authentication information.
 	variable oauth_consumer_key {}
 	variable oauth_consumer_secret {}
@@ -28,24 +35,37 @@ namespace eval ::twitlib {
 	variable oauth_token_secret {}
 
 	# Twitter API URLs
-	# GET account/settings to get info about your account.
-	variable account_settings_url https://api.twitter.com/1.1/account/settings.json
-	# POST status_url to create a tweet.
-	variable status_url       https://api.twitter.com/1.1/statuses/update.json
-	# GET home_url to retrieve tweets by users you follow/yourself.
-	variable home_url         https://api.twitter.com/1.1/statuses/home_timeline.json
+
+	# Look up information about your account.
+	variable users_lookup_me_url https://api.twitter.com/2/users/me
+
+	# Create a tweet (new status).
+	variable status_url       https://api.twitter.com/2/tweets
+
+	# Retrieve tweets by users you follow/yourself.
+	variable home_url         https://api.twitter.com/2/users/%s/timelines/reverse_chronological
+
+	# Retrieve single tweet.
+	variable get_status_url   https://api.twitter.com/2/tweets/%s
+
+	# Follow.
+	variable follow_url       https://api.twitter.com/2/users/%s/following
+
+	# Unfollow.
+	variable unfollow_url     https://api.twitter.com/2/users/%s/following/%s
+
+	# Look up user.
+	variable look_up_user_url https://api.twitter.com/2/users/by/username/%s
+
 	variable mentions_url     https://api.twitter.com/1.1/statuses/mentions_timeline.json
 	variable msg_url          https://api.twitter.com/1.1/direct_messages/new.json
 	variable msgs_url         https://api.twitter.com/1.1/direct_messages.json
 	variable trends_place_url https://api.twitter.com/1.1/trends/place.json
-	variable follow_url       https://api.twitter.com/1.1/friendships/create.json
-	variable unfollow_url     https://api.twitter.com/1.1/friendships/destroy.json
 	variable search_url       https://api.twitter.com/1.1/search/tweets.json
 	variable followers_url    https://api.twitter.com/1.1/followers/list.json
 	variable following_url    https://api.twitter.com/1.1/friends/list.json
 	variable retweet_url      https://api.twitter.com/1.1/statuses/retweet/
 	variable search_users_url https://api.twitter.com/1.1/users/search.json
-	variable statuses_show_url https://api.twitter.com/1.1/statuses/show.json
 }
 
 # perform a Twitter API request.
@@ -88,17 +108,60 @@ proc ::twitlib::query {url {query_list {}} {http_method {}}} {
 	return [::json::json2dict $data]
 }
 
+# Perform an API v2 request.
+proc ::twitlib::query_v2 {url body http_method query_params} {
+	if {$::twitlib::oauth_token == "" || \
+		$::twitlib::oauth_token_secret == "" || \
+		$::twitlib::oauth_consumer_key == {} || \
+		$::twitlib::oauth_consumer_secret == {}} {
+		error "OAuth not initialised."
+	}
+
+	if {[dict size $query_params] != 0} {
+		append url ?[::http::formatQuery {*}$query_params]
+	}
+
+	return [::twitoauth::query_api_v2 \
+		$url \
+		$::twitlib::oauth_consumer_key \
+		$::twitlib::oauth_consumer_secret \
+		$http_method \
+		$::twitlib::oauth_token \
+		$::twitlib::oauth_token_secret \
+		$body \
+		$query_params \
+	]
+}
+
 proc ::twitlib::get_account_settings {} {
-	set result [::twitlib::query $::twitlib::account_settings_url {} GET]
-	return $result
+	set body {}
+	set query_params {}
+	return [::twitlib::query_v2 \
+		$::twitlib::users_lookup_me_url \
+		$body \
+		GET \
+		$query_params \
+	]
+}
+
+proc ::twitlib::look_up_user_id {screen_name} {
+	# TODO(horgh): We should URL encode the screen name.
+	set url [format $::twitlib::look_up_user_url $screen_name]
+	set body {}
+	set method GET
+	set query_params {}
+
+	set result [::twitlib::query_v2 $url $body $method $query_params]
+	return [dict get $result body data id]
 }
 
 proc ::twitlib::get_my_screen_name {} {
-	set settings [::twitlib::get_account_settings]
-	if {![dict exists $settings screen_name]} {
+	set response [::twitlib::get_account_settings]
+	set body [dict get $response body]
+	if {![dict exists $body data username]} {
 		return ""
 	}
-	return [dict get $settings screen_name]
+	return [dict get $body data username]
 }
 
 # take status dict from a timeline and reformats it if necessary.
@@ -117,11 +180,12 @@ proc ::twitlib::get_my_screen_name {} {
 # get invalid ones.
 proc ::twitlib::fix_status {status} {
 	set changed 0
-	set tweet [dict get $status full_text]
+	set tweet [dict get $status text]
 
 	# if it has a retweet then as they can be truncated and lose
 	# data, especially urls, replace the tweet with the
 	# original tweet but add 'RT @name' to it.
+	# TODO(horgh): This is currently dead code for API v2.
 	if {[dict exists $status retweeted_status]} {
 		set rt_user [dict get $status retweeted_status user screen_name]
 		set rt_tweet [dict get $status retweeted_status full_text]
@@ -173,7 +237,7 @@ proc ::twitlib::fix_status {status} {
 	}
 
 	if {$changed} {
-		dict set status full_text $tweet
+		dict set status text $tweet
 	}
 	return $status
 }
@@ -216,27 +280,56 @@ proc ::twitlib::fix_statuses {statuses} {
 #     first request to get another 'page' of results.
 #     note I do not implement this here.
 proc ::twitlib::get_unseen_updates {} {
-	set params [list \
-		count $::twitlib::max_updates \
-		since_id $::twitlib::last_id \
-		tweet_mode extended \
+	if {$::twitlib::my_user_id == 0} {
+		set response [::twitlib::get_account_settings]
+		set ::twitlib::my_user_id [dict get $response body data id]
+	}
+
+	set url [format $::twitlib::home_url $::twitlib::my_user_id]
+	set body {}
+	set query_params [list \
+		max_results  $::twitlib::max_updates \
+		since_id     $::twitlib::last_id \
+		user.fields  id,username \
+		expansions   author_id \
+		tweet.fields author_id,created_at,text \
 	]
 
-	set result [::twitlib::query $::twitlib::home_url $params GET]
+	set result [::twitlib::query_v2 $url $body GET $query_params]
 
-	# re-order - oldest to newest.
-	set result [lreverse $result]
+	set status [dict get $result status]
+	set body [dict get $result body]
+	if {$status != 200} {
+		error "HTTP request failure: HTTP $status: $body"
+	}
+
+	# This seems to happen if there's no new updates?
+	if {![dict exists $body data]} {
+		return [list]
+	}
+
+	set statuses [dict get $body data]
+	set includes [dict get $body includes]
 
 	# fix issues with truncation.
-	set statuses [::twitlib::fix_statuses $result]
+	#
+	# TODO(horgh): I don't know if this is necessary with API v2.
+	set statuses [::twitlib::fix_statuses $statuses]
 
 	set updates [list]
 	foreach status $statuses {
-		set user_id     [dict get $status user id_str]
-		set screen_name [dict get $status user screen_name]
-		set id          [dict get $status id_str]
+		set user_id     [dict get $status author_id]
+		set id          [dict get $status id]
 		set created_at  [dict get $status created_at]
-		set full_text   [dict get $status full_text]
+		set full_text   [dict get $status text]
+
+		set screen_name $user_id
+		foreach user [dict get $includes users] {
+			if {[dict get $user id] == $user_id} {
+				set screen_name [dict get $user username]
+				break
+			}
+		}
 
 		set d [dict create]
 		dict set d user_id     $user_id
@@ -311,14 +404,35 @@ proc ::twitlib::get_unseen_mentions {} {
 }
 
 proc ::twitlib::get_status_by_id {id} {
-	set params [list \
-		id $id \
-		tweet_mode extended \
+	set url [format $::twitlib::get_status_url $id]
+	set body {}
+	set query_params [list \
+		expansions   author_id \
+		tweet.fields author_id,text \
+		user.fields  id,username \
 	]
 
-	set result [::twitlib::query $::twitlib::statuses_show_url $params GET]
+	set result [::twitlib::query_v2 $url $body GET $query_params]
 
-	set fixed_status [::twitlib::fix_status $result]
+	set http_status [dict get $result status]
+	set body [dict get $result body]
+	if {$http_status != 200} {
+		error "HTTP request failure: HTTP $http_status: $body"
+	}
 
-	return $fixed_status
+	set status [dict get $body data]
+	set includes [dict get $body includes]
+
+	# TODO(horgh): I don't know if this is necessary with API v2.
+	set status [::twitlib::fix_status $status]
+
+	set screen_name "unknown"
+	foreach user [dict get $includes users] {
+		if {[dict get $user id] == [dict get $status author_id]} {
+			dict set status screen_name [dict get $user username]
+			break
+		}
+	}
+
+	return $status
 }
